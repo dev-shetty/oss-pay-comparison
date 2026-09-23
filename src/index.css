@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@font-face { font-family: 'Nunito'; font-weight: 400; font-display: swap; src: url('./assets/fonts/Nunito-400.ttf') format('truetype'); }
+@font-face { font-family: 'Nunito'; font-weight: 600; font-display: swap; src: url('./assets/fonts/Nunito-600.ttf') format('truetype'); }
+@font-face { font-family: 'Nunito'; font-weight: 700; font-display: swap; src: url('./assets/fonts/Nunito-700.ttf') format('truetype'); }
+@font-face { font-family: 'Nunito'; font-weight: 800; font-display: swap; src: url('./assets/fonts/Nunito-800.ttf') format('truetype'); }
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Avenir Next', Arial, sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-ink: #1A1712;
+  --color-sub: #5B6268;
+  --color-mute: #A39C90;
+  --color-oss: #0060B9;
+  --color-faang: #E08A1E;
+  --color-inp: #1E9E6A;
+  --color-insvc: #808C93;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --shadow-card: 0 4px 8px 0 rgb(0 0 0 / 8%);
+}
+
+:root {
+  --background: #f6f8fc;
+  --foreground: #1a1712;
+  --card: #ffffff;
+  --card-foreground: #1a1712;
+  --popover: #ffffff;
+  --popover-foreground: #1a1712;
+  --primary: #0060b9;
+  --primary-foreground: #ffffff;
+  --secondary: #eff4f9;
+  --secondary-foreground: #1a1712;
+  --muted: #f0f1f3;
+  --muted-foreground: #5b6268;
+  --accent: #eff4f9;
+  --accent-foreground: #1a1712;
+  --destructive: #d1495b;
+  --border: #e3e6ea;
+  --input: #e3e6ea;
+  --ring: #4f9bdc;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { @apply font-sans; }
+  body { @apply bg-background text-foreground; overflow-x: hidden; }
+}
+
+.present-root {
+  --present-scale: 1.4;
+}
+
+.tt { font-family: 'Nunito', sans-serif; color: #1a1712; min-width: 200px; }
+.tt-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; margin-bottom: 8px; }
+.tt-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.tt-grid { display: grid; grid-template-columns: auto auto; column-gap: 16px; row-gap: 4px; align-items: baseline; }
+.tt-label { font-size: 13px; color: #5b6268; }
+.tt-value { font-size: 15px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.tt-note { margin-top: 8px; font-size: 12px; color: #a39c90; }
+.present-root .tt-title { font-size: 18px; }
+.present-root .tt-label { font-size: 16px; }
+.present-root .tt-value { font-size: 19px; }
