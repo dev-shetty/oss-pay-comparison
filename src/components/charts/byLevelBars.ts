@@ -1,9 +1,10 @@
 import type { EChartsOption } from 'echarts';
-import { formatMoney, formatN, formatRatio, toDisplay } from '@/lib/format';
+import { formatMoney, formatRatio, formatSalaries, toDisplay } from '@/lib/format';
 import { ratio } from '@/lib/pools';
 import { BUCKET_COLORS, BUCKET_LABELS, COLORS, STORY_N, STORY_OPACITY } from '@/lib/theme';
 import { LEVELS, type Bucket, type Level, type Pct } from '@/lib/types';
-import { baseOption, categoryAxis, emptySpec, labelSize, medianLabel, moneyAxis, nColor, nullPoolMessage, pctRows, storyNote, tooltipBox, type ChartContext, type ChartSpec } from './shared';
+import type { KeyItem } from '@/lib/chartKey';
+import { baseOption, bucketCounts, categoryAxis, emptySpec, labelSize, metricName, moneyAxis, nColor, nullPoolMessage, pctRows, shortMedianLabel, sourceLine, tooltipBox, type ChartContext, type ChartSpec } from './shared';
 
 export function pctAt(ctx: ChartContext, bucket: Bucket, level: Level): Pct | undefined {
   const pct = ctx.pools[bucket]?.[ctx.state.metric].byLevel?.[level];
@@ -21,14 +22,14 @@ export function levelTable(ctx: ChartContext, buckets: Bucket[], levels: Level[]
   return {
     columns: ['Level', ...buckets.map(b => BUCKET_LABELS[b]), 'OSS / FAANG+', 'OSS / Indian product'],
     rows: levels.map(level => [level,
-      ...buckets.map(b => { const p = pctAt(ctx, b, level); return p ? `${formatMoney(p.p50, cur)} (${formatN(p.n)})` : '–'; }),
+      ...buckets.map(b => { const p = pctAt(ctx, b, level); return p ? `${formatMoney(p.p50, cur)} (${formatSalaries(p.n)})` : '–'; }),
       formatRatioOrDash(ratio(pctAt(ctx, 'oss', level)?.p50, pctAt(ctx, 'faang', level)?.p50)),
       formatRatioOrDash(ratio(pctAt(ctx, 'oss', level)?.p50, pctAt(ctx, 'inp', level)?.p50))]),
   };
 }
 
 export function levelSource(ctx: ChartContext, buckets: Bucket[]): string {
-  return `Levels.fyi pooled percentiles, ${buckets.map(b => `${BUCKET_LABELS[b]} ${formatN(ctx.pools[b]?.n ?? 0)}`).join(' · ')}`;
+  return sourceLine(ctx, bucketCounts(buckets, b => ctx.pools[b]?.n ?? 0));
 }
 
 function ratioText(ctx: ChartContext, level: Level): string {
@@ -49,7 +50,7 @@ function barSeries(ctx: ChartContext, bucket: Bucket, levels: Level[]) {
     barGap: '15%',
     itemStyle: { color: BUCKET_COLORS[bucket], borderRadius: [4, 4, 0, 0] },
     label: { show: true, position: 'top' as const, fontSize: labelSize(ctx.scale) - 1, color: COLORS.sub, fontWeight: 600 as const, lineHeight: labelSize(ctx.scale) + 2,
-      formatter: (p: unknown) => { const pct = (p as { data: { pct?: Pct } }).data.pct; return pct ? medianLabel(pct.p50, pct.n, cur).replace(' (', '\n(') : ''; } },
+      formatter: (p: unknown) => { const pct = (p as { data: { pct?: Pct } }).data.pct; return pct ? shortMedianLabel(pct.p50, pct.n, cur).replace(' (', '\n(') : ''; } },
     data: levels.map(level => {
       const pct = pctAt(ctx, bucket, level);
       if (!pct) return { value: null };
@@ -77,14 +78,24 @@ function calloutSeries(ctx: ChartContext, levels: Level[], lift: number) {
   }];
 }
 
+const BARS_KEY: KeyItem[] = [
+  { glyph: 'value', text: '1.2x', tone: 'blue', label: 'OSS ÷ other bucket' },
+  { glyph: 'tintBar', label: 'under 20 salaries' },
+];
+
+const HELP = [
+  'Number on each bar: the median, with the salary count in brackets under it.',
+  'Callout: the OSS median divided by the other bucket\'s median at that level.',
+  'Light tint: under 20 salaries. Faded: under 10.',
+];
+
 export function buildByLevelBars(ctx: ChartContext): ChartSpec {
-  const metric = ctx.state.metric === 'tc' ? 'Total comp' : 'Base';
-  const subtitle = `${metric} median per level. Callout = OSS ÷ other bucket. Light tint = n<20.`;
+  const context = `${metricName(ctx)} median · by level`;
   const missing = nullPoolMessage(ctx);
-  if (missing) return emptySpec(subtitle, missing);
+  if (missing) return emptySpec(context, missing);
   const levels = shownLevels(ctx);
   const buckets = ctx.visible.filter(b => levels.some(l => pctAt(ctx, b, l)));
-  if (buckets.length === 0) return emptySpec(subtitle, 'No by-level rows for the selected buckets.');
+  if (buckets.length === 0) return emptySpec(context, 'No by-level salaries for the selected buckets.');
   const cur = ctx.state.cur;
   const maxValue = Math.max(...buckets.flatMap(b => levels.map(l => toDisplay(pctAt(ctx, b, l)?.p50 ?? 0, cur))));
   const base = baseOption(ctx.scale);
@@ -93,7 +104,7 @@ export function buildByLevelBars(ctx: ChartContext): ChartSpec {
     tooltip: { ...base.tooltip, formatter: (p: unknown) => {
       const { seriesName, color, data } = p as { seriesName: string; color: string; data: { pct?: Pct; level?: Level } };
       if (!data.pct) return '';
-      return tooltipBox(color, `${seriesName} ${data.level}`, pctRows(data.pct, cur), storyNote(data.pct.n));
+      return tooltipBox(color, `${seriesName} ${data.level}`, pctRows(data.pct, cur));
     } },
     xAxis: categoryAxis(levels, ctx.scale),
     yAxis: moneyAxis(cur, ctx.scale, { max: maxValue * 1.4 }),
@@ -101,7 +112,9 @@ export function buildByLevelBars(ctx: ChartContext): ChartSpec {
   };
   return {
     option,
-    subtitle,
+    context,
+    key: ctx.visible.includes('oss') ? BARS_KEY : BARS_KEY.slice(1),
+    help: HELP,
     legend: buckets,
     source: levelSource(ctx, buckets),
     table: levelTable(ctx, buckets, levels),

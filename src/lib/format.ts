@@ -49,6 +49,21 @@ export function formatN(n: number): string {
   return `n=${n.toLocaleString('en-US')}`;
 }
 
+export function formatSalaries(n: number): string {
+  if (n < 0) return 'predicted';
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'salary' : 'salaries'}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** The pull window is the 60 months before `pulledAt`, e.g. "Sep 2021 to Sep 2026". */
+export function windowText(pulledAt: string, months = 60): string {
+  const end = new Date(pulledAt);
+  const startYear = end.getUTCFullYear() - Math.floor(months / 12);
+  const month = MONTHS[end.getUTCMonth()];
+  return `${month} ${startYear} to ${month} ${end.getUTCFullYear()}`;
+}
+
 export function pctLabel(p: Pct, cur: Currency): string {
   const mid = formatMoney(p.p50, cur);
   return `${formatMoney(p.p25, cur)} · ${mid} · ${formatMoney(p.p75, cur)} (${formatN(p.n)})`;
@@ -57,4 +72,8 @@ export function pctLabel(p: Pct, cur: Currency): string {
 export function roundTo(value: number, digits = 1): number {
   const f = 10 ** digits;
   return Math.round(value * f) / f;
+}
+
+export function formatPulledAt(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }

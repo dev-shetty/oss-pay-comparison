@@ -3,6 +3,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
 import { BUCKETS, TOGGLES, type Bucket, type FilterState, type Snapshot, type ToggleSlug } from '@/lib/types';
 import { DEFAULT_STATE, toggleBucket } from '@/lib/urlState';
+import { salaries } from '@/lib/companies';
+import { formatPct } from '@/lib/format';
+import { share } from '@/lib/pools';
 
 interface FiltersSheetProps {
   open: boolean;
@@ -51,6 +54,12 @@ function Chip({ label, color, active, onClick }: ChipProps) {
   );
 }
 
+function toggleShare(snapshot: Snapshot): string {
+  const oss = snapshot.companies.filter(c => c.bucket === 'oss');
+  const part = oss.filter(c => TOGGLES.includes(c.slug as ToggleSlug)).reduce((s, c) => s + salaries(c), 0);
+  return formatPct(share(part, oss.reduce((s, c) => s + salaries(c), 0)));
+}
+
 function companyName(snapshot: Snapshot, slug: ToggleSlug): string {
   return snapshot.companies.find(c => c.slug === slug)?.name ?? slug;
 }
@@ -71,7 +80,7 @@ export function FiltersSheet({ open, onOpenChange, snapshot, state, ossN, onChan
         <Group label="Metric" help="Total comp = base + stock + bonus. Base = cash salary only.">
           <Pills value={state.metric} onChange={metric => onChange({ metric })} options={[{ value: 'tc', label: 'Total comp' }, { value: 'base', label: 'Base' }]} />
         </Group>
-        <Group label="Cut" help="All levels pools every row. By level uses Levels.fyi normalized L1–L5. By experience uses years since first job.">
+        <Group label="Cut" help="All levels pools every salary. By level uses Levels.fyi normalized L1–L5. By experience uses years since first job.">
           <Pills value={state.cut} onChange={cut => onChange({ cut })} options={[{ value: 'all', label: 'All levels' }, { value: 'level', label: 'By level' }, { value: 'yoe', label: 'By experience' }]} />
         </Group>
         <Group label="Buckets" help="Show or hide a bucket on every chart.">
@@ -81,7 +90,7 @@ export function FiltersSheet({ open, onOpenChange, snapshot, state, ossN, onChan
             ))}
           </div>
         </Group>
-        <Group label="In the OSS pool" help="Turn a company off and every OSS number recomputes from the pre-computed pools. These four are 82% of OSS rows.">
+        <Group label="In the OSS pool" help={`Turn a company off and every OSS number recomputes from the pre-computed pools. These four are ${toggleShare(snapshot)} of OSS salaries.`}>
           <div className="flex flex-wrap gap-2">
             {TOGGLES.map(slug => (
               <Chip key={slug} label={companyName(snapshot, slug)} color={BUCKET_COLORS.oss} active={state.toggles[slug]}

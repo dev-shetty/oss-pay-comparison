@@ -1,8 +1,8 @@
 import type { EChartsOption } from 'echarts';
 import { toDisplay } from '@/lib/format';
-import { COLORS, STORY_N, STORY_OPACITY, px, withAlpha } from '@/lib/theme';
+import { COLORS, px, withAlpha } from '@/lib/theme';
 import type { Currency, Pct } from '@/lib/types';
-import { baseOption, categoryAxis, labelSize, medianLabel, moneyAxis, nColor, pctRows, storyNote, tooltipBox } from './shared';
+import { baseOption, categoryAxis, filterMark, filterMarkRich, labelSize, medianLabel, moneyAxis, pctRows, thinColor, tooltipBox } from './shared';
 
 export interface DumbbellRow {
   id: string;
@@ -19,13 +19,11 @@ interface RowItem {
 }
 
 function rowOpacity(row: DumbbellRow): number {
-  if (row.off) return 0.5;
-  if (row.pct.n >= 0 && row.pct.n < STORY_N) return STORY_OPACITY;
-  return 1;
+  return row.off ? 0.6 : 1;
 }
 
 function rowColor(row: DumbbellRow): string {
-  return row.off ? COLORS.grayBar : nColor(row.pct.n, row.color);
+  return thinColor(row.pct.n, row.color, row.off);
 }
 
 function rangeLabel(row: DumbbellRow, cur: Currency): string {
@@ -33,18 +31,15 @@ function rangeLabel(row: DumbbellRow, cur: Currency): string {
   return `${prefix}${medianLabel(row.pct.p50, row.pct.n, cur)}`;
 }
 
-const TOGGLE_HINT = '⇄';
-
 function axisName(rows: DumbbellRow[], name: string): string {
-  const row = rows.find(r => r.name === name);
-  return row?.hint ? `${name} {hint|${TOGGLE_HINT}}` : name;
+  return filterMark(name, Boolean(rows.find(r => r.name === name)?.hint));
 }
 
 export function dumbbellTooltip(row: DumbbellRow, cur: Currency): string {
   const p = row.pct;
   const rows = pctRows(p, cur);
   if (row.off) rows.push({ label: 'OSS pool', value: 'excluded' });
-  const notes = [p.approx ? 'Median of company medians (approx.)' : '', storyNote(p.n), row.hint ?? ''].filter(Boolean);
+  const notes = [p.approx ? 'Median of company medians (approx.)' : '', row.hint ?? ''].filter(Boolean);
   return tooltipBox(row.color, row.name, rows, notes.join('<br/>'));
 }
 
@@ -76,14 +71,14 @@ export function dumbbellOption(rows: DumbbellRow[], cur: Currency, scale: number
   }));
   return {
     ...base,
-    grid: { ...base.grid, right: px(150, scale) },
+    grid: { ...base.grid, right: px(200, scale) },
     tooltip: {
       ...base.tooltip,
       formatter: (params: unknown) => dumbbellTooltip((params as { data: RowItem }).data.row, cur),
     },
     xAxis: moneyAxis(cur, scale),
     yAxis: categoryAxis(names, scale, { inverse: true, triggerEvent: true,
-      axisLabel: { color: COLORS.sub, fontSize: labelSize(scale), fontWeight: 600, formatter: (name: string) => axisName(rows, name), rich: { hint: { color: COLORS.mute, fontSize: labelSize(scale) - 1 } } } }),
+      axisLabel: { interval: 0, color: COLORS.sub, fontSize: labelSize(scale), fontWeight: 600, formatter: (name: string) => axisName(rows, name), rich: filterMarkRich(scale) } }),
     series: [
       {
         type: 'bar',

@@ -1,8 +1,9 @@
 import type { CustomSeriesRenderItemReturn, EChartsOption } from 'echarts';
 import type { CardOptions } from '@/lib/cardOptions.types';
+import type { KeyItem } from '@/lib/chartKey';
 import type { PoolMap } from '@/lib/pools';
-import { ANIMATION_MS, COLORS, FONT_FAMILY, SMALL_N, STORY_N, STORY_NOTE, STORY_OPACITY, WATERMARK, lighten, px } from '@/lib/theme';
-import { axisMoney, formatMoney, formatN } from '@/lib/format';
+import { ANIMATION_MS, BUCKET_LABELS, COLORS, FONT_FAMILY, SMALL_N, STORY_N, STORY_OPACITY, WATERMARK, lighten, px } from '@/lib/theme';
+import { axisMoney, formatMoney, formatSalaries, windowText } from '@/lib/format';
 import type { Bucket, Currency, FilterState, Pct, Snapshot, TableData } from '@/lib/types';
 
 export type CustomElement = NonNullable<CustomSeriesRenderItemReturn>;
@@ -19,13 +20,18 @@ export interface ChartContext {
 export interface ChartSpec {
   option: EChartsOption | null;
   table: TableData;
-  subtitle: string;
+  /** Metric and cut, e.g. "Total comp · all levels"; shown above the title. */
+  context: string;
+  /** The marks this chart draws, shown as glyphs next to the bucket legend. */
+  key: KeyItem[];
   source: string;
   legend?: Bucket[];
   help?: string[];
   missing?: string;
   /** Overrides the card's default chart height when the row count drives it. */
   height?: number;
+  /** Charts that draw a middle-50% band show a worked example of how to read it. */
+  guide?: 'dot' | 'tick';
 }
 
 const TINT = 0.55;
@@ -105,16 +111,50 @@ export function nColor(n: number, color: string): string {
   return n >= 0 && n < SMALL_N ? lighten(color, TINT) : color;
 }
 
+/** Axis-label marker after company names that the chart can toggle in or out of the OSS pool. */
+export function filterMark(name: string, toggleable: boolean): string {
+  return toggleable ? `${name} {mark|filter}` : name;
+}
+
+export function filterMarkRich(scale: number) {
+  return {
+    mark: { color: COLORS.blue, backgroundColor: lighten(COLORS.blue, 0.88), borderRadius: 3, padding: [1, 4], fontSize: labelSize(scale) - 3, fontWeight: 700 as const },
+  };
+}
+
+/** Thin or excluded companies keep a light tint of their own bucket colour so no row turns grey. */
+export function thinColor(n: number, color: string, off = false): string {
+  if (off || (n >= 0 && n < STORY_N)) return lighten(color, 0.7);
+  return nColor(n, color);
+}
+
 export function medianLabel(p50: number | null, n: number, cur: Currency): string {
-  return `${formatMoney(p50, cur)} (${formatN(n)})`;
+  return `${formatMoney(p50, cur)} (${formatSalaries(n)})`;
+}
+
+/** For charts where "(103 salaries)" does not fit; the help popover says what the number is. */
+export function shortMedianLabel(p50: number | null, n: number, cur: Currency): string {
+  return `${formatMoney(p50, cur)} (${n.toLocaleString('en-US')})`;
+}
+
+export function metricName(ctx: ChartContext): string {
+  return ctx.state.metric === 'tc' ? 'Total comp' : 'Base salary';
+}
+
+export function sourceLine(ctx: ChartContext, detail: string, where = 'in India'): string {
+  return `Levels.fyi, software engineers ${where}, ${windowText(ctx.snapshot.meta.pulledAt)}. ${detail}`;
+}
+
+/** "259 OSS, 9,395 FAANG+ and 2,060 Indian product salaries." */
+export function bucketCounts(buckets: Bucket[], count: (b: Bucket) => number): string {
+  const parts = buckets.map(b => `${count(b).toLocaleString('en-US')} ${BUCKET_LABELS[b]}`);
+  if (parts.length === 0) return '';
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return `${list} salaries.`;
 }
 
 export function nOpacity(n: number): number {
   return n >= 0 && n < STORY_N ? STORY_OPACITY : 1;
-}
-
-export function storyNote(n: number): string {
-  return n >= 0 && n < STORY_N ? STORY_NOTE : '';
 }
 
 /** Dot area tracks n: sqrt scale between 6px and 28px, then present-mode scaled. */
@@ -166,12 +206,12 @@ export function pctRows(p: Pct, cur: Currency): TooltipRow[] {
   return [
     { label: 'Median', value: formatMoney(p.p50, cur) },
     { label: 'Middle 50%', value: `${formatMoney(p.p25, cur)} – ${formatMoney(p.p75, cur)}` },
-    { label: 'Rows (n)', value: p.n < 0 ? 'predicted' : p.n.toLocaleString('en-US') },
+    { label: 'Salaries (n)', value: p.n < 0 ? 'predicted' : p.n.toLocaleString('en-US') },
   ];
 }
 
-export function emptySpec(subtitle: string, missing: string): ChartSpec {
-  return { option: null, table: { columns: [], rows: [] }, subtitle, source: '', missing };
+export function emptySpec(context: string, missing: string): ChartSpec {
+  return { option: null, table: { columns: [], rows: [] }, context, key: [], source: '', missing };
 }
 
 export function visibleWithPools(ctx: ChartContext): Bucket[] {

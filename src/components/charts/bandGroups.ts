@@ -2,7 +2,7 @@ import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams, CustomSer
 import { formatMoney, toDisplay } from '@/lib/format';
 import { COLORS, FONT_FAMILY, SMALL_N, px, withAlpha } from '@/lib/theme';
 import type { Currency, Pct } from '@/lib/types';
-import { baseOption, categoryAxis, labelSize, moneyAxis, nColor, nOpacity, niceMax, pctRows, storyNote, tooltipBox, type ChartContext, type CustomElement } from './shared';
+import { baseOption, categoryAxis, labelSize, moneyAxis, nColor, nOpacity, niceMax, pctRows, tooltipBox, type ChartContext, type CustomElement } from './shared';
 
 export interface BandItem {
   id: string;
@@ -100,7 +100,7 @@ function renderItem(data: Datum[], cur: Currency, scale: number) {
 }
 
 function tooltipFor({ group, item }: Datum, cur: Currency): string {
-  return tooltipBox(item.color, `${item.name} · ${group.name}`, pctRows(item.pct, cur), storyNote(item.pct.n));
+  return tooltipBox(item.color, `${item.name} · ${group.name}`, pctRows(item.pct, cur));
 }
 
 /** Chart height that keeps every sub-row readable: ~90px per band plus axis padding. */

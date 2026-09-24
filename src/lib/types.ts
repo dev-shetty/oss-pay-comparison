@@ -1,5 +1,5 @@
 export type Bucket = 'oss' | 'faang' | 'inp' | 'insvc';
-export type SubBucket = 'pure' | 'open-core' | 'oss-heavy';
+export type SubBucket = 'pure' | 'eoss' | 'oss-heavy';
 export type Level = 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 export type Yoe = '0-1' | '2-4' | '5-7' | '8-11' | '12-15' | '16+';
 export type Year = '2021' | '2022' | '2023' | '2024' | '2025' | '2026';
@@ -73,11 +73,17 @@ export interface Company {
   usP50?: number;
 }
 
+export interface ExternalLink {
+  label: string;
+  url: string;
+}
+
+/** `links` is empty when the only public source is a careers page. */
 export interface External {
   company: string;
   policy: string;
   floor: string;
-  url: string;
+  links: ExternalLink[];
 }
 
 export interface Meta {
@@ -87,6 +93,9 @@ export interface Meta {
   location: string;
   inrPerUsd: number;
   toggles: ToggleSlug[];
+  callCount?: number;
+  pullErrors?: string[];
+  pullNotes?: string[];
 }
 
 export interface Snapshot {

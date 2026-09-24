@@ -36,7 +36,6 @@ export const FONT_FAMILY = "'Nunito', -apple-system, BlinkMacSystemFont, 'Avenir
 export const SMALL_N = 20;
 export const STORY_N = 10;
 export const STORY_OPACITY = 0.35;
-export const STORY_NOTE = 'n < 10: a story, not a statistic';
 export const ANIMATION_MS = 600;
 
 export const WATERMARK = watermarkUrl;

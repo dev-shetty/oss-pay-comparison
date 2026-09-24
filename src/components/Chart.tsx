@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import type { EChartsOption, EChartsType } from 'echarts';
 import { echarts } from '@/lib/echarts';
@@ -39,6 +39,14 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart({ option
       if (name && clickRef.current) clickRef.current(name);
     },
   }), []);
+  // The Present frame can grow after mount (height cap lifted per slide); echarts-for-react misses that resize.
+  useEffect(() => {
+    const el = inner.current?.ele;
+    if (!el) return;
+    const observer = new ResizeObserver(() => inner.current?.getEchartsInstance().resize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   return (
     <ReactEChartsCore
       ref={inner}

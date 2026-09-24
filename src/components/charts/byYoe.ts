@@ -1,8 +1,9 @@
 import type { EChartsOption } from 'echarts';
-import { formatMoney, formatN, toDisplay } from '@/lib/format';
+import { formatMoney, formatSalaries, toDisplay } from '@/lib/format';
 import { BUCKET_COLORS, BUCKET_LABELS, SMALL_N, STORY_N, STORY_OPACITY, px } from '@/lib/theme';
 import { YOES, type Bucket, type Pct, type Yoe } from '@/lib/types';
-import { baseOption, categoryAxis, emptySpec, endLabel, lineFocus, moneyAxis, nColor, nullPoolMessage, pctRows, storyNote, tooltipBox, type ChartContext, type ChartSpec } from './shared';
+import type { KeyItem } from '@/lib/chartKey';
+import { baseOption, bucketCounts, categoryAxis, emptySpec, endLabel, lineFocus, metricName, moneyAxis, nColor, nullPoolMessage, pctRows, sourceLine, tooltipBox, type ChartContext, type ChartSpec } from './shared';
 
 function pctAt(ctx: ChartContext, bucket: Bucket, yoe: Yoe): Pct | undefined {
   const pct = ctx.pools[bucket]?.[ctx.state.metric].byYoe?.[yoe];
@@ -38,14 +39,25 @@ function lineSeries(ctx: ChartContext, bucket: Bucket) {
   };
 }
 
+const KEY: KeyItem[] = [
+  { glyph: 'dot', label: 'median' },
+  { glyph: 'smallDot', label: 'under 20 salaries' },
+];
+
+const HELP = [
+  'Each line joins one bucket\'s median across experience bands.',
+  'Past 11 years the OSS sample drops under 20 salaries per band.',
+  'Small dot: under 20 salaries. Faded: under 10 salaries.',
+];
+
 export function buildByYoe(ctx: ChartContext): ChartSpec {
-  const metric = ctx.state.metric === 'tc' ? 'Total comp' : 'Base';
-  const subtitle = `Median ${metric.toLowerCase()} per experience band. Small dot = n<20, faded = n<10.`;
+  const metric = metricName(ctx);
+  const context = `${metric} median · by years of experience`;
   const missing = nullPoolMessage(ctx);
-  if (missing) return emptySpec(subtitle, missing);
+  if (missing) return emptySpec(context, missing);
   const buckets = ctx.visible.filter(b => YOES.some(y => pctAt(ctx, b, y)));
   if (buckets.length === 0) {
-    return emptySpec(subtitle, `${metric} by experience is not pulled yet. See scripts/pull.ts (get-salaries-by-experience with salaryType base_salary).`);
+    return emptySpec(context, `${metric} by experience is not pulled yet. See scripts/pull.ts.`);
   }
   const cur = ctx.state.cur;
   const base = baseOption(ctx.scale);
@@ -55,7 +67,7 @@ export function buildByYoe(ctx: ChartContext): ChartSpec {
     tooltip: { ...base.tooltip, formatter: (p: unknown) => {
       const { seriesName, color, data } = p as { seriesName: string; color: string; data: { pct?: Pct; yoe?: Yoe } };
       if (!data.pct) return '';
-      return tooltipBox(color, `${seriesName}, ${data.yoe} yrs`, pctRows(data.pct, cur), storyNote(data.pct.n));
+      return tooltipBox(color, `${seriesName}, ${data.yoe} yrs`, pctRows(data.pct, cur));
     } },
     xAxis: categoryAxis(YOES.map(y => `${y} yrs`), ctx.scale, { boundaryGap: false }),
     yAxis: moneyAxis(cur, ctx.scale),
@@ -63,12 +75,14 @@ export function buildByYoe(ctx: ChartContext): ChartSpec {
   };
   return {
     option,
-    subtitle,
+    context,
+    key: KEY,
+    help: HELP,
     legend: buckets,
-    source: `Levels.fyi get-salaries-by-experience, ${buckets.map(b => `${BUCKET_LABELS[b]} ${formatN(ctx.pools[b]?.n ?? 0)}`).join(' · ')}`,
+    source: sourceLine(ctx, bucketCounts(buckets, b => ctx.pools[b]?.n ?? 0)),
     table: {
       columns: ['YoE', ...buckets.map(b => BUCKET_LABELS[b])],
-      rows: YOES.map(yoe => [yoe, ...buckets.map(b => { const p = pctAt(ctx, b, yoe); return p ? `${formatMoney(p.p50, cur)} (${formatN(p.n)})` : '–'; })]),
+      rows: YOES.map(yoe => [yoe, ...buckets.map(b => { const p = pctAt(ctx, b, yoe); return p ? `${formatMoney(p.p50, cur)} (${formatSalaries(p.n)})` : '–'; })]),
     },
   };
 }

@@ -1,13 +1,26 @@
 import type { EChartsOption } from 'echarts';
 import { formatMoney, formatPct, roundTo } from '@/lib/format';
 import { share } from '@/lib/pools';
-import { BUCKET_COLORS, BUCKET_LABELS, COLORS, STORY_N, STORY_OPACITY, lighten } from '@/lib/theme';
+import { BUCKET_COLORS, BUCKET_LABELS, COLORS, STORY_N, STORY_OPACITY, lighten, px } from '@/lib/theme';
 import { LEVELS, type Bucket, type EquityRow, type Level } from '@/lib/types';
-import { baseOption, categoryAxis, emptySpec, labelSize, nullPoolMessage, pctAxis, storyNote, tooltipBox, type ChartContext, type ChartSpec } from './shared';
+import type { KeyItem } from '@/lib/chartKey';
+import { baseOption, bucketCounts, categoryAxis, emptySpec, labelSize, nullPoolMessage, pctAxis, sourceLine, tooltipBox, type ChartContext, type ChartSpec } from './shared';
 
 type Part = 'base' | 'stock' | 'bonus';
 const PARTS: Part[] = ['base', 'stock', 'bonus'];
 const PART_TINT: Record<Part, number> = { base: 0, stock: 0.45, bonus: 0.75 };
+
+const KEY: KeyItem[] = [
+  { glyph: 'shades', label: 'base · stock · bonus' },
+  { glyph: 'value', text: '32%', label: 'stock share' },
+];
+
+const HELP = [
+  'Each bar splits the median package into base, stock and bonus.',
+  'Darkest shade: base. Mid shade: stock. Lightest shade: bonus.',
+  'Number above each bar: stock as a share of the package.',
+  'Faded bar: under 10 salaries.',
+];
 
 function rowAt(ctx: ChartContext, bucket: Bucket, level: Level): EquityRow | undefined {
   const row = ctx.pools[bucket]?.equity?.byLevel[level];
@@ -31,12 +44,13 @@ function partSeries(ctx: ChartContext, bucket: Bucket, part: Part, levels: Level
     barGap: '20%',
     itemStyle: { color },
     label: {
-      show: part === 'stock',
-      position: 'inside' as const,
+      show: part === 'bonus',
+      position: 'top' as const,
+      distance: px(4, ctx.scale),
       fontSize: labelSize(ctx.scale),
-      fontWeight: 700 as const,
-      color: part === 'base' ? '#fff' : COLORS.ink,
-      formatter: (p: unknown) => formatPct((p as { data: { shareValue: number } }).data.shareValue),
+      fontWeight: 800 as const,
+      color: COLORS.ink,
+      formatter: (p: unknown) => { const row = (p as { data: { row?: EquityRow } }).data.row; return row ? formatPct(partShare(row, 'stock')) : ''; },
     },
     data: levels.map(level => {
       const row = rowAt(ctx, bucket, level);
@@ -55,20 +69,21 @@ function tooltip(ctx: ChartContext, data: Item): string {
   const row = data.row;
   return tooltipBox(BUCKET_COLORS[data.bucket], `${BUCKET_LABELS[data.bucket]} ${data.level}`, [
     ...PARTS.map(part => ({ label: `${part[0].toUpperCase()}${part.slice(1)}`, value: `${formatPct(partShare(row, part))} · ${formatMoney(row[part], cur)}` })),
-    { label: 'Rows (n)', value: row.n.toLocaleString('en-US') },
-  ], storyNote(row.n));
+    { label: 'Salaries (n)', value: row.n.toLocaleString('en-US') },
+  ]);
 }
 
 export function buildEquity(ctx: ChartContext): ChartSpec {
-  const subtitle = 'Share of total comp: dark = base, mid = stock, light = bonus. Label = stock share.';
+  const context = 'Share of total comp · by level';
   const missing = nullPoolMessage(ctx);
-  if (missing) return emptySpec(subtitle, missing);
+  if (missing) return emptySpec(context, missing);
   const buckets = ctx.visible.filter(b => ctx.pools[b]?.equity);
-  if (buckets.length === 0) return emptySpec(subtitle, 'Equity split not pulled for the selected buckets.');
+  if (buckets.length === 0) return emptySpec(context, 'Equity split not pulled for the selected buckets.');
   const levels = levelsFor(ctx, buckets);
   const base = baseOption(ctx.scale);
   const option: EChartsOption = {
     ...base,
+    grid: { ...base.grid, top: px(44, ctx.scale) },
     tooltip: { ...base.tooltip, formatter: (p: unknown) => tooltip(ctx, (p as { data: Item }).data) },
     xAxis: categoryAxis(levels, ctx.scale),
     yAxis: pctAxis(ctx.scale),
@@ -76,11 +91,13 @@ export function buildEquity(ctx: ChartContext): ChartSpec {
   };
   return {
     option,
-    subtitle,
+    context,
+    key: KEY,
+    help: HELP,
     legend: buckets,
-    source: 'Levels.fyi get-salary-trends medianCompByLevel, India, 0-60 months',
+    source: sourceLine(ctx, bucketCounts(buckets, b => LEVELS.reduce((s, l) => s + (rowAt(ctx, b, l)?.n ?? 0), 0))),
     table: {
-      columns: ['Level', ...buckets.map(b => `${BUCKET_LABELS[b]} base / stock / bonus (n)`)],
+      columns: ['Level', ...buckets.map(b => `${BUCKET_LABELS[b]} base / stock / bonus (salaries)`)],
       rows: levels.map(level => [level, ...buckets.map(b => {
         const row = rowAt(ctx, b, level);
         return row ? `${PARTS.map(part => formatPct(partShare(row, part))).join(' / ')} (${row.n})` : '–';

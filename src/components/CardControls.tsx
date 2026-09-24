@@ -4,16 +4,15 @@ import type { CardOptions, LevelView } from '@/lib/cardOptions.types';
 
 interface ControlsProps {
   cardId: string;
-  present: boolean;
   options: CardOptions;
   onChange: (patch: Partial<CardOptions>) => void;
 }
 
-interface PillProps<T extends string> { value: T; options: { value: T; label: string }[]; present: boolean; onChange: (v: T) => void }
+interface PillProps<T extends string> { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }
 
-function Pills<T extends string>({ value, options, present, onChange }: PillProps<T>) {
+function Pills<T extends string>({ value, options, onChange }: PillProps<T>) {
   return (
-    <ToggleGroup value={[value]} onValueChange={next => { if (next[0]) onChange(next[0] as T); }} variant="outline" size={present ? 'default' : 'sm'} spacing={0}>
+    <ToggleGroup value={[value]} onValueChange={next => { if (next[0]) onChange(next[0] as T); }} variant="outline" size="sm" spacing={0}>
       {options.map(o => (
         <ToggleGroupItem key={o.value} value={o.value} className="data-pressed:bg-primary data-pressed:text-primary-foreground">{o.label}</ToggleGroupItem>
       ))}
@@ -21,10 +20,10 @@ function Pills<T extends string>({ value, options, present, onChange }: PillProp
   );
 }
 
-export function CardControls({ cardId, present, options, onChange }: ControlsProps) {
+export function CardControls({ cardId, options, onChange }: ControlsProps) {
   if (cardId === 'headline') {
     return (
-      <label className={`flex items-center gap-2 font-bold text-sub ${present ? 'text-base' : 'text-xs'}`}>
+      <label className="flex items-center gap-2 text-xs font-bold text-sub">
         Show company-median dot
         <Switch checked={options.medianOfCompanies} onCheckedChange={medianOfCompanies => onChange({ medianOfCompanies })} />
       </label>
@@ -32,7 +31,7 @@ export function CardControls({ cardId, present, options, onChange }: ControlsPro
   }
   if (cardId === 'by-level') {
     return (
-      <Pills<LevelView> value={options.levelView} present={present} onChange={levelView => onChange({ levelView })}
+      <Pills<LevelView> value={options.levelView} onChange={levelView => onChange({ levelView })}
         options={[{ value: 'slope', label: 'Slope' }, { value: 'bars', label: 'Bars' }]} />
     );
   }

@@ -2,7 +2,7 @@ import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams, CustomSer
 import { formatMoney, toDisplay } from '@/lib/format';
 import { COLORS, SMALL_N, px, withAlpha } from '@/lib/theme';
 import type { Currency, Pct } from '@/lib/types';
-import { baseOption, categoryAxis, labelSize, medianLabel, moneyAxis, nColor, nOpacity, pctRows, storyNote, tooltipBox, niceMax, type ChartContext, type CustomElement } from './shared';
+import { baseOption, categoryAxis, labelSize, medianLabel, moneyAxis, nColor, nOpacity, pctRows, tooltipBox, niceMax, type ChartContext, type CustomElement } from './shared';
 
 /** The API adds p10/p90 on some pulls; the frozen Pct type does not carry them. */
 export type WidePct = Pct & { p10?: number; p90?: number };
@@ -107,7 +107,7 @@ export function ridgeTooltip(row: RidgeRow, cur: Currency): string {
   const rows = pctRows(p, cur);
   if (hasShape(p)) rows.push({ label: 'p10 – p90', value: `${formatMoney(p.p10, cur)} – ${formatMoney(p.p90, cur)}` });
   if (cm) rows.push({ label: `Company-median (${cm.count} cos.)`, value: formatMoney(cm.value, cur) });
-  return tooltipBox(row.color, row.name, rows, storyNote(p.n));
+  return tooltipBox(row.color, row.name, rows);
 }
 
 export function ridgeOption(ctx: ChartContext, rows: RidgeRow[]): EChartsOption {

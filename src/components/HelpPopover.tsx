@@ -6,7 +6,7 @@ interface HelpPopoverProps {
   present: boolean;
 }
 
-/** Opens on hover and focus, and click pins it so touch and projector use both work. */
+/** Opens on hover and focus, and click pins it so touch and projector use both work. Anchors to the nearest positioned ancestor so it never overflows a narrow row end. */
 export function HelpPopover({ lines, present }: HelpPopoverProps) {
   const [pinned, setPinned] = useState(false);
   const [hover, setHover] = useState(false);
@@ -14,7 +14,7 @@ export function HelpPopover({ lines, present }: HelpPopoverProps) {
   const open = pinned || hover;
   const text = present ? 'text-base' : 'text-xs';
   return (
-    <span className="relative inline-flex" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <span className="inline-flex" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <button
         type="button"
         aria-label="How to read this chart"

@@ -26,16 +26,23 @@ export interface DotRow {
 
 interface Placed { dot: Dot; x: number; dy: number; align: 'left' | 'right' | 'center' }
 
-/** The low label sits left of its dot unless that runs into the axis, then it moves above the dot. */
+/**
+ * Labels sit on the outer sides of the pair, measured from the outer edge of either dot so a big
+ * hollow dot never runs into a small filled one. If the low label cannot fit left of the pair, it
+ * moves above the row instead, clear of the high label.
+ */
 function place(row: DotRow, x: (usd: number) => number, left: number, scale: number): Placed[] {
   const pad = px(6, scale);
   const [lo, hi] = row.a.value <= row.b.value ? [row.a, row.b] : [row.b, row.a];
-  const loEdge = x(lo.value) - lo.size / 2 - pad;
-  const fits = loEdge - lo.label.length * labelSize(scale) * 0.55 >= left;
+  const dots = [row.a, row.b];
+  const leftEdge = Math.min(...dots.map(d => x(d.value) - d.size / 2)) - pad;
+  const rightEdge = Math.max(...dots.map(d => x(d.value) + d.size / 2)) + pad;
+  const fits = leftEdge - lo.label.length * labelSize(scale) * 0.55 >= left;
+  const lift = Math.max(lo.size, hi.size) / 2 + px(16, scale);
   const loPlaced: Placed = fits
-    ? { dot: lo, x: loEdge, dy: 0, align: 'right' }
-    : { dot: lo, x: x(lo.value), dy: -(lo.size / 2 + px(10, scale)), align: 'center' };
-  return [loPlaced, { dot: hi, x: x(hi.value) + hi.size / 2 + pad, dy: 0, align: 'left' }];
+    ? { dot: lo, x: leftEdge, dy: 0, align: 'right' }
+    : { dot: lo, x: Math.max(left, leftEdge), dy: -lift, align: 'left' };
+  return [loPlaced, { dot: hi, x: rightEdge, dy: 0, align: 'left' }];
 }
 
 function text(x: number, y: number, value: string, fill: string, size: number, weight: number, align: 'left' | 'right' | 'center', opacity = 1): CustomElement {
@@ -60,16 +67,18 @@ function renderRow(rows: DotRow[], cur: Currency, scale: number) {
     const color = nColor(row.n, row.color);
     const opacity = nOpacity(row.n);
     const size = labelSize(scale);
+    const placed = place(row, x, left, scale);
     const children: CustomElement[] = [
       { type: 'line', silent: true, shape: { x1: x(row.a.value), y1: y0, x2: x(row.b.value), y2: y0 }, style: { stroke: color, lineWidth: px(2, scale), opacity } },
       circle(x(row.a.value), y0, row.a, color, scale, opacity),
       circle(x(row.b.value), y0, row.b, color, scale, opacity),
-      ...place(row, x, left, scale).map(p => text(p.x, y0 + p.dy, p.dot.label, COLORS.sub, size, 700, p.align, opacity)),
+      ...placed.map(p => text(p.x, y0 + p.dy, p.dot.label, COLORS.sub, size, 700, p.align, opacity)),
     ];
     if (row.midLabel) {
       const mid = (x(row.a.value) + x(row.b.value)) / 2;
       const lift = Math.max(row.a.size, row.b.size) / 2 + px(9, scale);
-      children.push(text(mid, y0 - lift, row.midLabel, row.n < SMALL_N ? COLORS.sub : row.color, size, 800, 'center', opacity));
+      const aboveTaken = placed.some(p => p.dy < 0);
+      children.push(text(mid, aboveTaken ? y0 + lift : y0 - lift, row.midLabel, row.n < SMALL_N ? COLORS.sub : row.color, size, 800, 'center', opacity));
     }
     if (row.subText) {
       children.push(text(x(Math.min(row.a.value, row.b.value)) - Math.min(row.a.size, row.b.size) / 2, y0 + h * 0.3, row.subText, COLORS.mute, size - 1, 600, 'left'));

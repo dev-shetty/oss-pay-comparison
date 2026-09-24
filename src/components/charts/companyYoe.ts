@@ -2,7 +2,7 @@ import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams, CustomSer
 import { formatMoney } from '@/lib/format';
 import { COLORS, FONT_FAMILY, SMALL_N, px } from '@/lib/theme';
 import { YOES, type Currency, type Pct, type Yoe } from '@/lib/types';
-import { baseOption, categoryAxis, labelSize, nColor, nOpacity, pctRows, storyNote, tooltipBox, type ChartContext, type CustomElement } from './shared';
+import { baseOption, categoryAxis, filterMark, filterMarkRich, labelSize, pctRows, thinColor, tooltipBox, type ChartContext, type CustomElement } from './shared';
 
 /** One company row; `bands` holds only the YoE buckets the API returned. */
 export interface YoeRow {
@@ -18,7 +18,7 @@ interface Datum { value: [number, number]; row: YoeRow; yoe: Yoe | null }
 
 export const MIN_BANDS = 2;
 const ROW_PX = 46;
-const NOT_ENOUGH = 'not enough rows by experience';
+const NOT_ENOUGH = 'not enough salaries by experience';
 
 export function hasEnoughBands(row: YoeRow): boolean {
   return Object.keys(row.bands).length >= MIN_BANDS;
@@ -29,11 +29,11 @@ export function yoeRowsHeight(rowCount: number, scale: number): number {
 }
 
 function rowColor(row: YoeRow, n: number): string {
-  return row.off ? COLORS.grayBar : nColor(n, row.color);
+  return thinColor(n, row.color, row.off);
 }
 
-function rowOpacity(row: YoeRow, n: number): number {
-  return row.off ? 0.5 : nOpacity(n);
+function rowOpacity(row: YoeRow): number {
+  return row.off ? 0.6 : 1;
 }
 
 function text(x: number, y: number, value: string, fill: string, size: number, weight: number, opacity = 1): CustomElement {
@@ -57,7 +57,7 @@ function renderItem(data: Datum[], maxP50: number, cur: Currency, scale: number)
     const yOf = (p: Pct) => centerY + h * 0.36 - ((p.p50 ?? 0) / maxP50) * h * 0.72;
     const xOf = (band: Yoe) => api.coord([YOES.indexOf(band), rowIdx])[0];
     const color = rowColor(row, pct.n);
-    const opacity = rowOpacity(row, pct.n);
+    const opacity = rowOpacity(row);
     const children: CustomElement[] = [];
     const prev = YOES[YOES.indexOf(yoe) - 1];
     const prevPct = prev ? row.bands[prev] : undefined;
@@ -79,12 +79,12 @@ function tooltipFor({ row, yoe }: Datum, cur: Currency): string {
   const pct = row.bands[yoe]!;
   const rows = pctRows(pct, cur);
   if (row.off) rows.push({ label: 'OSS pool', value: 'excluded' });
-  const notes = [storyNote(pct.n), row.hint ?? ''].filter(Boolean);
+  const notes = [row.hint ?? ''].filter(Boolean);
   return tooltipBox(row.color, `${row.name} · ${yoe} yrs`, rows, notes.join('<br/>'));
 }
 
 function axisName(rows: YoeRow[], name: string): string {
-  return rows.find(r => r.name === name)?.hint ? `${name} {hint|⇄}` : name;
+  return filterMark(name, Boolean(rows.find(r => r.name === name)?.hint));
 }
 
 function toData(rows: YoeRow[]): Datum[] {
@@ -106,7 +106,7 @@ export function companyYoeOption(ctx: ChartContext, rows: YoeRow[]): EChartsOpti
     tooltip: { ...base.tooltip, formatter: (p: unknown) => tooltipFor((p as { data: Datum }).data, cur) },
     xAxis: { ...categoryAxis(YOES.map(y => `${y} yrs`), scale, { position: 'top', boundaryGap: true }), splitLine: { show: true, lineStyle: { color: COLORS.grid, type: 'dashed' } } },
     yAxis: categoryAxis(rows.map(r => r.name), scale, { inverse: true, triggerEvent: true, splitLine: { show: true, lineStyle: { color: COLORS.grid } },
-      axisLabel: { color: COLORS.sub, fontSize: labelSize(scale), fontWeight: 600, formatter: (name: string) => axisName(rows, name), rich: { hint: { color: COLORS.mute, fontSize: labelSize(scale) - 1 } } } }),
+      axisLabel: { color: COLORS.sub, fontSize: labelSize(scale), fontWeight: 600, formatter: (name: string) => axisName(rows, name), rich: filterMarkRich(scale) } }),
     series: [{ type: 'custom', name: 'yoe', renderItem: renderItem(data, maxP50, cur, scale), data }],
   };
 }

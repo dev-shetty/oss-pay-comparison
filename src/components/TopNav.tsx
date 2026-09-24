@@ -2,6 +2,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Brand } from './Brand';
 import type { Currency, FilterState } from '@/lib/types';
 
 interface TopNavProps {
@@ -15,9 +16,8 @@ export function TopNav({ state, filterCount, onOpenFilters, onChange }: TopNavPr
   return (
     <div className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1100px] items-center gap-4 px-4">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-extrabold text-ink">Do open source companies pay competitively?</p>
-          <p className="truncate text-xs text-mute">Software Engineer, India, last 5 years, Levels.fyi data. IndiaFOSS 2026 BoF.</p>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <Brand />
         </div>
         <Button variant="outline" size="sm" onClick={onOpenFilters} aria-label={`Filters, ${filterCount} active`}>
           <SlidersHorizontal data-icon="inline-start" />

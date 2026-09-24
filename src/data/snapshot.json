@@ -23,7 +23,7 @@
       "slug": "gitlab",
       "name": "GitLab",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 77639,
         "p50": 87423,
@@ -50,7 +50,7 @@
       "slug": "hashicorp",
       "name": "HashiCorp",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 44927,
         "p50": 65824,
@@ -89,7 +89,7 @@
       "slug": "elastic",
       "name": "Elastic",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 60720,
         "p50": 81288,
@@ -108,7 +108,7 @@
       "slug": "mongodb",
       "name": "MongoDB",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 42575,
         "p50": 62082,
@@ -128,7 +128,7 @@
       "slug": "confluent",
       "name": "Confluent",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 67360,
         "p50": 94132,
@@ -178,7 +178,7 @@
       "slug": "red-hat",
       "name": "Red Hat",
       "bucket": "oss",
-      "sub": "pure",
+      "sub": "eoss",
       "tc": {
         "p25": 17426,
         "p50": 23155,
@@ -248,7 +248,7 @@
       "slug": "posthog",
       "name": "PostHog",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": null,
       "base": null
     },
@@ -256,7 +256,7 @@
       "slug": "grafana",
       "name": "Grafana Labs",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 29147,
         "p50": 46276,
@@ -275,7 +275,7 @@
       "slug": "databricks",
       "name": "Databricks",
       "bucket": "oss",
-      "sub": "open-core",
+      "sub": "eoss",
       "tc": {
         "p25": 68001,
         "p50": 81875,
@@ -4957,73 +4957,90 @@
       "company": "GitLab",
       "policy": "Public handbook. Was SF benchmark x location factor x level factor. Calculator retired May 2025; moving to local-currency market ranges.",
       "floor": "Location-adjusted",
-      "url": "https://handbook.gitlab.com/handbook/total-rewards/compensation/"
+      "links": [
+        {
+          "label": "handbook",
+          "url": "https://handbook.gitlab.com/handbook/total-rewards/compensation/"
+        },
+        {
+          "label": "blog",
+          "url": "https://about.gitlab.com/blog/why-we-pay-local-rates/"
+        }
+      ]
     },
     {
       "company": "PostHog",
       "policy": "Public calculator: benchmark x level x step x location factor. SF-anchored, targets 90th percentile.",
       "floor": "0.6 outside the US",
-      "url": "https://posthog.com/handbook/people/compensation"
+      "links": [
+        {
+          "label": "calculator",
+          "url": "https://posthog.com/handbook/people/compensation"
+        }
+      ]
     },
     {
       "company": "Buffer",
       "policy": "All salaries public. Market benchmark x cost-of-living band x role x experience.",
       "floor": "Global band 90%, High band 100%",
-      "url": "https://buffer.com/salaries"
+      "links": [
+        {
+          "label": "salaries",
+          "url": "https://buffer.com/salaries"
+        },
+        {
+          "label": "formula",
+          "url": "https://buffer.com/resources/salary-formula/"
+        }
+      ]
     },
     {
       "company": "Sourcegraph",
       "policy": "Public handbook. Band entry = 75th percentile of US tech data. Four zones.",
       "floor": "Zone 4 = 40%",
-      "url": "https://github.com/sourcegraph/handbook/blob/main/content/benefits-pay-perks/pay-expenses/compensation/index.md"
+      "links": [
+        {
+          "label": "handbook",
+          "url": "https://github.com/sourcegraph/handbook/blob/main/content/benefits-pay-perks/pay-expenses/compensation/index.md"
+        }
+      ]
     },
     {
       "company": "Automattic",
       "policy": "Global ranges, internal equity regardless of location. Paid in local currency, adjusted up only.",
       "floor": "Global band",
-      "url": "https://automattic.com/compensation/"
-    },
-    {
-      "company": "Confluent",
-      "policy": "No public bands. Job posts state location is a factor in pay. Remote-first, 25+ countries.",
-      "floor": "Location-adjusted",
-      "url": "https://careers.confluent.io/"
+      "links": [
+        {
+          "label": "philosophy",
+          "url": "https://automattic.com/compensation/"
+        },
+        {
+          "label": "article",
+          "url": "https://techcrunch.com/2020/05/26/how-automattic-pays-its-remote-employees-across-different-geographies/"
+        }
+      ]
     },
     {
       "company": "Red Hat",
       "policy": "No public bands. Office-flex; India offices in Bangalore, Pune, Kolkata, Mumbai, New Delhi.",
       "floor": "Not found",
-      "url": "https://www.redhat.com/en/blog/how-red-hat-approaching-future-work"
-    },
-    {
-      "company": "Canonical",
-      "policy": "No public calculator. Job posts: location, experience and performance shape pay. Fully distributed since 2004.",
-      "floor": "Location-adjusted",
-      "url": "https://canonical.com/careers/company-culture/remote-work"
-    },
-    {
-      "company": "Mozilla",
-      "policy": "No public bands. US posts carry ranges under pay-transparency law. Remote-first.",
-      "floor": "Not found",
-      "url": "https://www.mozilla.org/en-US/careers/"
-    },
-    {
-      "company": "Grafana Labs",
-      "policy": "No public calculator. \"Compensation ranges are country specific.\" 100% remote, 40+ countries.",
-      "floor": "Location-adjusted by country",
-      "url": "https://grafana.com/careers/"
+      "links": [
+        {
+          "label": "blog",
+          "url": "https://www.redhat.com/en/blog/how-red-hat-approaching-future-work"
+        }
+      ]
     },
     {
       "company": "Elastic",
       "policy": "No public bands. Distributed by design: 40+ countries, 25 offices, mixed remote and office.",
       "floor": "Not found",
-      "url": "https://www.elastic.co/blog/culture-elastic-distributed-by-design"
-    },
-    {
-      "company": "SUSE",
-      "policy": "No public calculator, bands or philosophy on the careers site.",
-      "floor": "Not found",
-      "url": "https://www.suse.com/careers/"
+      "links": [
+        {
+          "label": "blog",
+          "url": "https://www.elastic.co/blog/culture-elastic-distributed-by-design"
+        }
+      ]
     }
   ]
 }

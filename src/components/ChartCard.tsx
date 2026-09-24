@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CardActions } from './CardActions';
 import { Chart, type ChartHandle } from './Chart';
 import { ChartLegend } from './ChartLegend';
-import { HelpPopover } from './HelpPopover';
+import { RangeGuide } from './RangeGuide';
 import { DataTableDialog } from './DataTableDialog';
 import type { ChartContext, ChartSpec } from './charts/shared';
 import type { Bucket } from '@/lib/types';
@@ -34,6 +34,25 @@ function savePng(handle: ChartHandle | null, filename: string) {
   a.click();
 }
 
+interface ChartBodyProps {
+  spec: ChartSpec;
+  chartRef: React.RefObject<ChartHandle>;
+  height: number | string;
+  present: boolean;
+  onClickName?: (name: string) => void;
+}
+
+function ChartBody({ spec, chartRef, height, present, onClickName }: ChartBodyProps) {
+  if (spec.option) return <Chart ref={chartRef} option={spec.option} height={height} onClickName={onClickName} />;
+  return (
+    <div style={{ height }} className="flex flex-col items-center justify-center rounded-lg bg-muted text-sub">
+      <p className={`${present ? 'text-2xl' : 'text-base'} font-bold`}>Not pulled yet</p>
+      <p className={`${present ? 'text-lg' : 'text-sm'} mt-1 max-w-md text-center`}>{spec.missing}</p>
+      <img src={WATERMARK} alt="Levels.fyi" className="absolute right-6 bottom-2 h-5 opacity-60" />
+    </div>
+  );
+}
+
 export function ChartCard({ id, title, ctx, build, present, height, controls, onClickName }: ChartCardProps) {
   const chartRef = useRef<ChartHandle>(null);
   const [tableOpen, setTableOpen] = useState(false);
@@ -42,19 +61,16 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
   const legendBuckets = ctx.visible.filter(b => spec.legend?.includes(b) || hidden.includes(b));
   const toggleBucket = (b: Bucket) => setHidden(prev => (prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]));
   const missing = spec.option === null;
-  const chartHeight = present ? height : spec.height ?? height;
+  const chartHeight = present ? '100%' : spec.height ?? height;
   const titleClass = present ? 'text-[2.4rem] leading-tight font-extrabold' : 'text-xl leading-tight font-extrabold';
-  const subClass = present ? 'text-lg' : 'text-[13px] font-semibold';
+  const contextClass = present ? 'text-lg' : 'text-xs';
   return (
-    <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${missing ? 'opacity-70' : ''}`}>
+    <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${present ? 'h-full' : ''} ${missing ? 'opacity-70' : ''}`}>
       <CardHeader className="gap-1 border-b border-border pb-3">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h2 className={`${titleClass} text-ink truncate`}>{title}</h2>
-            <div className={`${subClass} text-mute mt-1 flex items-center gap-1.5`}>
-              <span className="truncate">{spec.subtitle}</span>
-              {spec.help && <HelpPopover lines={spec.help} present={present} />}
-            </div>
+            <p className={`${contextClass} mb-1 font-bold text-mute`}>{spec.context}</p>
+            <h2 className={`${titleClass} text-ink text-balance`}>{title}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-4">
             {controls}
@@ -68,18 +84,15 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative flex flex-col gap-3 pt-4">
-        <ChartLegend buckets={legendBuckets} hidden={hidden} present={present} onToggle={toggleBucket} />
-        {spec.option ? (
-          <Chart ref={chartRef} option={spec.option} height={chartHeight} onClickName={onClickName} />
-        ) : (
-          <div style={{ height: chartHeight }} className="flex flex-col items-center justify-center rounded-lg bg-muted text-sub">
-            <p className={`${present ? 'text-2xl' : 'text-base'} font-bold`}>Not pulled yet</p>
-            <p className={`${present ? 'text-lg' : 'text-sm'} mt-1 max-w-md text-center`}>{spec.missing}</p>
-            <img src={WATERMARK} alt="Levels.fyi" className="absolute right-6 bottom-2 h-5 opacity-60" />
+      <CardContent className={`relative flex flex-col ${present ? 'min-h-0 flex-1 gap-2 pt-3' : 'gap-3 pt-4'}`}>
+        <ChartLegend buckets={legendBuckets} hidden={hidden} items={spec.key} help={spec.help} present={present} onToggle={toggleBucket} />
+        {spec.guide && !(present && spec.guide === 'tick') && <RangeGuide present={present} mark={spec.guide} />}
+        <div className={present ? 'relative min-h-0 flex-1' : ''}>
+          <div className={present ? 'absolute inset-0' : ''}>
+            <ChartBody spec={spec} chartRef={chartRef} height={chartHeight} present={present} onClickName={onClickName} />
           </div>
-        )}
-        <p className={`${present ? 'text-base' : 'text-xs'} text-mute truncate pr-28`}>{spec.source}</p>
+        </div>
+        <p className={`${present ? 'text-base' : 'text-xs'} shrink-0 text-mute pr-28`}>{spec.source}</p>
       </CardContent>
       {!missing && (
         <DataTableDialog open={tableOpen} onOpenChange={setTableOpen} title={title} source={spec.source} table={spec.table} />

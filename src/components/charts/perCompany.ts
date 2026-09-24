@@ -1,13 +1,14 @@
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatSalaries } from '@/lib/format';
 import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
 import { BUCKETS, YOES, type Company, type ToggleSlug } from '@/lib/types';
 import { companyYoeOption, hasEnoughBands, yoeRowsHeight, type YoeRow } from './companyYoe';
 import { dumbbellOption, type DumbbellRow } from './dumbbell';
-import type { ChartContext, ChartSpec } from './shared';
+import type { KeyItem } from '@/lib/chartKey';
+import { metricName, sourceLine, type ChartContext, type ChartSpec } from './shared';
 
 interface Entry { company: Company; off: boolean; hint?: string }
 
-const TOGGLE_HINT = 'Click the row to toggle this company in or out of the OSS pool';
+const TOGGLE_HINT = 'Click the name to remove this company from OSS, or add it back';
 
 function entries(ctx: ChartContext): Entry[] {
   const { metric, toggles, sort } = ctx.state;
@@ -27,17 +28,30 @@ function name(e: Entry): string {
   return e.off ? `${e.company.name} (out)` : e.company.name;
 }
 
+function clickHint(ctx: ChartContext): string {
+  const names = ctx.snapshot.meta.toggles.map(slug => ctx.snapshot.companies.find(c => c.slug === slug)?.name ?? slug);
+  return `Click ${names.slice(0, -1).join(', ')} or ${names[names.length - 1]} to remove it from OSS, and again to add it back.`;
+}
+
+const FILTER_KEY: KeyItem = { glyph: 'filterTag', label: 'click to remove from OSS' };
+
+function withFilter(ctx: ChartContext, items: KeyItem[]): KeyItem[] {
+  return ctx.visible.includes('oss') ? [...items, FILTER_KEY] : items;
+}
+
 function dumbbellSpec(ctx: ChartContext, list: Entry[]): ChartSpec {
   const cur = ctx.state.cur;
-  const metric = ctx.state.metric === 'tc' ? 'Total comp' : 'Base';
   const rows = list.map((e): DumbbellRow => ({ id: e.company.slug, name: name(e), pct: e.company[ctx.state.metric]!, off: e.off, color: BUCKET_COLORS[e.company.bucket], hint: e.hint }));
   return {
     option: dumbbellOption(rows, cur, ctx.scale, 12),
     legend: ctx.visible.filter(b => list.some(e => e.company.bucket === b)),
-    subtitle: `${metric}: band = p25–p75, tick = median, dots = rows. Light tint = n<20. ⇄ = click to toggle.`,
-    source: `Levels.fyi, ${rows.length} companies, ${rows.reduce((s, r) => s + r.pct.n, 0).toLocaleString('en-US')} rows`,
+    context: `${metricName(ctx)} · per company`,
+    key: withFilter(ctx, [{ glyph: 'tintBand', label: 'under 20 salaries' }]),
+    guide: 'tick',
+    help: ['Band: the middle 50% of salaries. Tick: the median.', 'Dots in the band: one per salary, up to 60.', 'Light tint: under 20 salaries.', clickHint(ctx)],
+    source: sourceLine(ctx, `${rows.length} companies, ${rows.reduce((s, r) => s + r.pct.n, 0).toLocaleString('en-US')} salaries.`),
     table: {
-      columns: ['Company', 'Bucket', 'p25', 'Median', 'p75', 'n'],
+      columns: ['Company', 'Bucket', 'p25', 'Median', 'p75', 'Salaries'],
       rows: list.map(e => {
         const p = e.company[ctx.state.metric]!;
         return [name(e), BUCKET_LABELS[e.company.bucket], formatMoney(p.p25, cur), formatMoney(p.p50, cur), formatMoney(p.p75, cur), p.n];
@@ -56,13 +70,15 @@ function yoeSpec(ctx: ChartContext, list: Entry[]): ChartSpec {
     option: companyYoeOption(ctx, sorted),
     height: yoeRowsHeight(sorted.length, ctx.scale),
     legend: ctx.visible.filter(b => list.some(e => e.company.bucket === b)),
-    subtitle: 'Total comp median by years of experience, one shared scale. Light tint = n<20. ⇄ = click to toggle.',
-    source: `Levels.fyi get-salaries-by-experience, ${sorted.length} companies, ${bandCount} bands (n<5 bands omitted by the API)`,
+    context: 'Total comp median · by years of experience',
+    key: withFilter(ctx, [{ glyph: 'dot', label: 'median' }, { glyph: 'smallDot', label: 'under 20 salaries' }]),
+    help: ['Each line is one company\'s median across experience bands, on one shared scale.', 'Light tint: under 20 salaries.', clickHint(ctx)],
+    source: sourceLine(ctx, `${sorted.length} companies, ${bandCount} experience bands. Bands with under 5 salaries are left out.`),
     table: {
       columns: ['Company', 'Bucket', ...YOES.map(y => `${y} yrs`)],
       rows: sorted.map(r => {
         const bucket = list.find(e => e.company.slug === r.id)!.company.bucket;
-        return [r.name, BUCKET_LABELS[bucket], ...YOES.map(y => (r.bands[y] ? `${formatMoney(r.bands[y]!.p50, cur)} (n=${r.bands[y]!.n})` : '–'))];
+        return [r.name, BUCKET_LABELS[bucket], ...YOES.map(y => (r.bands[y] ? `${formatMoney(r.bands[y]!.p50, cur)} (${formatSalaries(r.bands[y]!.n)})` : '–'))];
       }),
     },
   };

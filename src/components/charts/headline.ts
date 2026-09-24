@@ -1,11 +1,10 @@
-import { formatMoney, formatN } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { BUCKET_COLORS, BUCKET_LABELS, STORY_N } from '@/lib/theme';
 import { LEVELS, YOES, type Bucket, type Level, type Pct, type ToggleSlug, type Yoe } from '@/lib/types';
 import { bandGroupsHeight, bandGroupsOption, type BandGroup, type BandItem } from './bandGroups';
 import { ridgeOption, type RidgeRow } from './ridge';
-import { emptySpec, nullPoolMessage, type ChartContext, type ChartSpec } from './shared';
-
-const METRIC_LABEL = { tc: 'Total comp', base: 'Base' } as const;
+import { RANGE_KEY, type KeyItem } from '@/lib/chartKey';
+import { bucketCounts, emptySpec, metricName, nullPoolMessage, sourceLine, type ChartContext, type ChartSpec } from './shared';
 
 function row(bucket: Bucket, pct: Pct): RidgeRow {
   return { id: `${bucket}:`, name: BUCKET_LABELS[bucket], pct, color: BUCKET_COLORS[bucket] };
@@ -60,59 +59,69 @@ function yoeGroups(ctx: ChartContext): BandGroup[] {
 
 const HELP = [
   'Median: half the engineers earn less than this, half earn more.',
-  'Band (p25–p75): the middle half of engineers sit inside this range.',
+  'Band (middle 50%): the middle half of engineers sit inside this range.',
   'Thin line: the rest, up to 1.5× the band width.',
   'Hollow dot: median of the company medians. Shows if one big company pulls the pool.',
+  'Light tint: under 20 salaries. Faded: under 10 salaries.',
 ];
 
-function subtitleFor(ctx: ChartContext): string {
-  const metric = METRIC_LABEL[ctx.state.metric];
-  const cutText = { all: 'all levels', level: 'by level', yoe: 'by experience' }[ctx.state.cut];
-  return `${metric}, ${cutText}. Band = middle 50%, dot = median. Light tint = n<20.`;
+function contextFor(ctx: ChartContext): string {
+  const cutText = { all: 'all levels', level: 'by level', yoe: 'by years of experience' }[ctx.state.cut];
+  return `${metricName(ctx)} · ${cutText}`;
 }
 
-function groupedSpec(ctx: ChartContext, groups: BandGroup[], subtitle: string): ChartSpec {
+function keyFor(ctx: ChartContext): KeyItem[] {
+  const thin = RANGE_KEY.filter(k => k.glyph === 'tintBand');
+  const companies = ctx.state.cut === 'all' && ctx.options.medianOfCompanies;
+  return companies ? [...thin, { glyph: 'hollowDot', label: 'median of companies' }] : thin;
+}
+
+function groupedSpec(ctx: ChartContext, groups: BandGroup[], context: string): ChartSpec {
   const cur = ctx.state.cur;
   const cells = groups.flatMap(g => g.items.map(item => ({ g, item })));
   return {
     option: bandGroupsOption(ctx, groups),
     height: bandGroupsHeight(groups.length, ctx.scale),
-    subtitle,
+    context,
+    key: keyFor(ctx),
+    guide: 'dot',
     help: HELP,
     legend: ctx.visible.filter(b => cells.some(c => c.item.id === b)),
-    source: sourceLine(ctx),
+    source: headlineSource(ctx),
     table: {
-      columns: ['Band', 'Group', 'p25', 'Median', 'p75', 'n'],
+      columns: ['Band', 'Group', 'p25', 'Median', 'p75', 'Salaries'],
       rows: cells.map(({ g, item }) => [g.name, item.name, formatMoney(item.pct.p25, cur), formatMoney(item.pct.p50, cur), formatMoney(item.pct.p75, cur), item.pct.n]),
     },
   };
 }
 
-function sourceLine(ctx: ChartContext): string {
-  return `Levels.fyi pooled percentiles, ${ctx.visible.map(b => `${BUCKET_LABELS[b]} ${formatN(ctx.pools[b]?.n ?? 0)}`).join(' · ')}`;
+function headlineSource(ctx: ChartContext): string {
+  return sourceLine(ctx, bucketCounts(ctx.visible, b => ctx.pools[b]?.n ?? 0));
 }
 
 const NOT_PULLED = 'Not pulled yet for this metric and cut. See scripts/pull.ts.';
 
 export function buildHeadline(ctx: ChartContext): ChartSpec {
-  const subtitle = subtitleFor(ctx);
+  const context = contextFor(ctx);
   const missing = nullPoolMessage(ctx);
-  if (missing) return emptySpec(subtitle, missing);
+  if (missing) return emptySpec(context, missing);
   if (ctx.state.cut !== 'all') {
     const groups = ctx.state.cut === 'level' ? levelGroups(ctx) : yoeGroups(ctx);
-    return groups.length === 0 ? emptySpec(subtitle, NOT_PULLED) : groupedSpec(ctx, groups, subtitle);
+    return groups.length === 0 ? emptySpec(context, NOT_PULLED) : groupedSpec(ctx, groups, context);
   }
   const rows = allRows(ctx);
-  if (rows.length === 0) return emptySpec(subtitle, NOT_PULLED);
+  if (rows.length === 0) return emptySpec(context, NOT_PULLED);
   const cur = ctx.state.cur;
   return {
     option: ridgeOption(ctx, rows),
-    subtitle,
+    context,
+    key: keyFor(ctx),
+    guide: 'dot',
     help: HELP,
     legend: ctx.visible.filter(b => rows.some(r => r.id.startsWith(`${b}:`))),
-    source: sourceLine(ctx),
+    source: headlineSource(ctx),
     table: {
-      columns: ['Group', 'p25', 'Median', 'p75', 'n', 'Median of company medians'],
+      columns: ['Group', 'p25', 'Median', 'p75', 'Salaries', 'Median of company medians'],
       rows: rows.map(r => [r.name, formatMoney(r.pct.p25, cur), formatMoney(r.pct.p50, cur), formatMoney(r.pct.p75, cur), r.pct.n,
         r.companyMedian ? `${formatMoney(r.companyMedian.value, cur)} (${r.companyMedian.count} cos.)` : '–']),
     },

@@ -100,7 +100,8 @@ function checkSnapshot(s: Snapshot) {
   if (!s.pools['oss:rh1-cf1-db1-am1']) fail('pools', 'the all-on OSS pool must not be null');
   for (const [key, pool] of Object.entries(s.pools)) checkPool(`pools.${key}`, pool);
   for (const e of s.external) {
-    if (!e.company || !e.policy || !e.floor || !/^https?:\/\//.test(e.url)) fail(`external.${e.company}`, 'needs company, policy, floor, http url');
+    if (!e.company || !e.policy || !e.floor || !Array.isArray(e.links)) fail(`external.${e.company}`, 'needs company, policy, floor, links[]');
+    for (const link of e.links ?? []) if (!link.label || !/^https?:\/\//.test(link.url)) fail(`external.${e.company}.links`, 'needs label and http url');
   }
 }
 
