@@ -1,6 +1,7 @@
 import { formatMoney } from '@/lib/format';
 import { BUCKET_COLORS, BUCKET_LABELS, STORY_N } from '@/lib/theme';
-import { LEVELS, YOES, type Bucket, type Level, type Pct, type ToggleSlug, type Yoe } from '@/lib/types';
+import { isExcluded } from '@/lib/companies';
+import { LEVELS, YOES, type Bucket, type Level, type Pct, type Yoe } from '@/lib/types';
 import { bandGroupsHeight, bandGroupsOption, type BandGroup, type BandItem } from './bandGroups';
 import { ridgeOption, type RidgeRow } from './ridge';
 import { RANGE_KEY, type KeyItem } from '@/lib/chartKey';
@@ -16,10 +17,10 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/** OSS respects the company toggles so the hollow dot tracks the same pool as the filled one. */
+/** OSS respects the group toggles so the hollow dot tracks the same pool as the filled one. */
 function companyMedian(ctx: ChartContext, bucket: Bucket): RidgeRow['companyMedian'] {
   const values = ctx.snapshot.companies
-    .filter(c => c.bucket === bucket && (ctx.state.toggles[c.slug as ToggleSlug] ?? true))
+    .filter(c => c.bucket === bucket && !isExcluded(c, ctx.state))
     .map(c => c[ctx.state.metric]?.p50)
     .filter((v): v is number => typeof v === 'number');
   if (values.length === 0) return undefined;
@@ -57,14 +58,6 @@ function yoeGroups(ctx: ChartContext): BandGroup[] {
     .filter(g => g.items.length > 0);
 }
 
-const HELP = [
-  'Median: half the engineers earn less than this, half earn more.',
-  'Band (middle 50%): the middle half of engineers sit inside this range.',
-  'Thin line: the rest, up to 1.5× the band width.',
-  'Hollow dot: median of the company medians. Shows if one big company pulls the pool.',
-  'Light tint: under 20 salaries. Faded: under 10 salaries.',
-];
-
 function contextFor(ctx: ChartContext): string {
   const cutText = { all: 'all levels', level: 'by level', yoe: 'by years of experience' }[ctx.state.cut];
   return `${metricName(ctx)} · ${cutText}`;
@@ -84,12 +77,10 @@ function groupedSpec(ctx: ChartContext, groups: BandGroup[], context: string): C
     height: bandGroupsHeight(groups.length, ctx.scale),
     context,
     key: keyFor(ctx),
-    guide: 'dot',
-    help: HELP,
     legend: ctx.visible.filter(b => cells.some(c => c.item.id === b)),
     source: headlineSource(ctx),
     table: {
-      columns: ['Band', 'Group', 'p25', 'Median', 'p75', 'Salaries'],
+      columns: ['Band', 'Group', 'p25', 'p50', 'p75', 'Salaries'],
       rows: cells.map(({ g, item }) => [g.name, item.name, formatMoney(item.pct.p25, cur), formatMoney(item.pct.p50, cur), formatMoney(item.pct.p75, cur), item.pct.n]),
     },
   };
@@ -116,12 +107,10 @@ export function buildHeadline(ctx: ChartContext): ChartSpec {
     option: ridgeOption(ctx, rows),
     context,
     key: keyFor(ctx),
-    guide: 'dot',
-    help: HELP,
     legend: ctx.visible.filter(b => rows.some(r => r.id.startsWith(`${b}:`))),
     source: headlineSource(ctx),
     table: {
-      columns: ['Group', 'p25', 'Median', 'p75', 'Salaries', 'Median of company medians'],
+      columns: ['Group', 'p25', 'p50', 'p75', 'Salaries', 'Median of company medians'],
       rows: rows.map(r => [r.name, formatMoney(r.pct.p25, cur), formatMoney(r.pct.p50, cur), formatMoney(r.pct.p75, cur), r.pct.n,
         r.companyMedian ? `${formatMoney(r.companyMedian.value, cur)} (${r.companyMedian.count} cos.)` : '–']),
     },

@@ -2,13 +2,11 @@ import type { KeyItem } from '@/lib/chartKey';
 import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
 import type { Bucket } from '@/lib/types';
 import { ChartKey } from './ChartKey';
-import { HelpPopover } from './HelpPopover';
 
 interface ChartLegendProps {
   buckets: Bucket[];
   hidden: Bucket[];
   items: KeyItem[];
-  help?: string[];
   present: boolean;
   onToggle: (bucket: Bucket) => void;
 }
@@ -39,8 +37,8 @@ function BucketSwatch({ bucket, off, text, onToggle }: SwatchProps) {
 }
 
 /** Plain HTML so hover blur inside the canvas never touches it. Bucket toggles are local to the card. */
-export function ChartLegend({ buckets, hidden, items, help, present, onToggle }: ChartLegendProps) {
-  if (buckets.length === 0 && items.length === 0 && !help) return null;
+export function ChartLegend({ buckets, hidden, items, present, onToggle }: ChartLegendProps) {
+  if (buckets.length === 0 && items.length === 0) return null;
   const text = present ? 'text-lg' : 'text-[13px]';
   const keyText = present ? 'text-base' : 'text-xs sm:text-[13px]';
   return (
@@ -52,7 +50,7 @@ export function ChartLegend({ buckets, hidden, items, help, present, onToggle }:
       )}
       {buckets.length > 0 && items.length > 0 && <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />}
       <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-1 font-semibold text-sub ${keyText}`}>
-        <ChartKey items={items} present={present} trailing={help && <HelpPopover lines={help} present={present} />} />
+        <ChartKey items={items} present={present} />
       </div>
     </div>
   );

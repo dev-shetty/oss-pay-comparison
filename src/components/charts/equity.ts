@@ -15,13 +15,6 @@ const KEY: KeyItem[] = [
   { glyph: 'value', text: '32%', label: 'stock share' },
 ];
 
-const HELP = [
-  'Each bar splits the median package into base, stock and bonus.',
-  'Darkest shade: base. Mid shade: stock. Lightest shade: bonus.',
-  'Number above each bar: stock as a share of the package.',
-  'Faded bar: under 10 salaries.',
-];
-
 function rowAt(ctx: ChartContext, bucket: Bucket, level: Level): EquityRow | undefined {
   const row = ctx.pools[bucket]?.equity?.byLevel[level];
   return row && row.n >= 1 ? row : undefined;
@@ -93,7 +86,6 @@ export function buildEquity(ctx: ChartContext): ChartSpec {
     option,
     context,
     key: KEY,
-    help: HELP,
     legend: buckets,
     source: sourceLine(ctx, bucketCounts(buckets, b => LEVELS.reduce((s, l) => s + (rowAt(ctx, b, l)?.n ?? 0), 0))),
     table: {

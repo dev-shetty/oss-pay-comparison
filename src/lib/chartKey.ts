@@ -9,8 +9,6 @@ export type Glyph =
   | 'tick'
   | 'tintBar'
   | 'dashed'
-  | 'wedgeAhead'
-  | 'wedgeBehind'
   | 'shades'
   | 'lightChip'
   | 'value'
@@ -25,8 +23,8 @@ export interface KeyItem {
 }
 
 export const RANGE_KEY: KeyItem[] = [
-  { glyph: 'band', label: 'middle 50%' },
-  { glyph: 'dot', label: 'median' },
+  { glyph: 'band', label: 'p25 – p75' },
+  { glyph: 'dot', label: 'p50' },
   { glyph: 'tintBand', label: 'under 20 salaries' },
 ];
 

@@ -40,14 +40,8 @@ function lineSeries(ctx: ChartContext, bucket: Bucket) {
 }
 
 const KEY: KeyItem[] = [
-  { glyph: 'dot', label: 'median' },
+  { glyph: 'dot', label: 'p50' },
   { glyph: 'smallDot', label: 'under 20 salaries' },
-];
-
-const HELP = [
-  'Each line joins one bucket\'s median across experience bands.',
-  'Past 11 years the OSS sample drops under 20 salaries per band.',
-  'Small dot: under 20 salaries. Faded: under 10 salaries.',
 ];
 
 export function buildByYoe(ctx: ChartContext): ChartSpec {
@@ -77,7 +71,6 @@ export function buildByYoe(ctx: ChartContext): ChartSpec {
     option,
     context,
     key: KEY,
-    help: HELP,
     legend: buckets,
     source: sourceLine(ctx, bucketCounts(buckets, b => ctx.pools[b]?.n ?? 0)),
     table: {

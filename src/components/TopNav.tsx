@@ -1,6 +1,5 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { Presentation, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Brand } from './Brand';
 import type { Currency, FilterState } from '@/lib/types';
@@ -30,10 +29,10 @@ export function TopNav({ state, filterCount, onOpenFilters, onChange }: TopNavPr
           <ToggleGroupItem value="usd" className="data-pressed:bg-primary data-pressed:text-primary-foreground">USD</ToggleGroupItem>
           <ToggleGroupItem value="inr" className="data-pressed:bg-primary data-pressed:text-primary-foreground">INR</ToggleGroupItem>
         </ToggleGroup>
-        <label className="flex items-center gap-2 text-xs font-bold text-sub">
+        <Button variant="ghost" size="sm" onClick={() => onChange({ present: true, card: 0 })}>
+          <Presentation data-icon="inline-start" />
           Present
-          <Switch checked={state.present} onCheckedChange={present => onChange({ present, card: 0 })} />
-        </label>
+        </Button>
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ export interface DumbbellRow {
   pct: Pct;
   color: string;
   hint?: string;
+  badge?: string;
   off?: boolean;
 }
 
@@ -32,7 +33,8 @@ function rangeLabel(row: DumbbellRow, cur: Currency): string {
 }
 
 function axisName(rows: DumbbellRow[], name: string): string {
-  return filterMark(name, Boolean(rows.find(r => r.name === name)?.hint));
+  const row = rows.find(r => r.name === name);
+  return filterMark(name, row?.badge, row?.off);
 }
 
 export function dumbbellTooltip(row: DumbbellRow, cur: Currency): string {

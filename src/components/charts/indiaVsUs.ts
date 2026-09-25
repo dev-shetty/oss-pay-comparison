@@ -1,4 +1,5 @@
 import { formatMoney, formatPct, roundTo } from '@/lib/format';
+import { isExcluded } from '@/lib/companies';
 import { ratio } from '@/lib/pools';
 import { BUCKET_COLORS, BUCKET_LABELS, px } from '@/lib/theme';
 import type { Company } from '@/lib/types';
@@ -10,7 +11,7 @@ interface Item { company: Company; value: number; indiaP50: number; usP50: numbe
 
 function items(ctx: ChartContext): Item[] {
   return ctx.snapshot.companies
-    .filter(c => ctx.visible.includes(c.bucket) && c.usP50 && c.tc?.p50)
+    .filter(c => ctx.visible.includes(c.bucket) && !isExcluded(c, ctx.state) && c.usP50 && c.tc?.p50)
     .map(c => {
       const r = ratio(c.tc!.p50, c.usP50) ?? 0;
       return { company: c, value: roundTo(r * 100, 1), indiaP50: c.tc!.p50!, usP50: c.usP50!, n: c.tc!.n };
@@ -26,7 +27,7 @@ function toRow(ctx: ChartContext, item: Item): DotRow {
     name: item.company.name,
     color: BUCKET_COLORS[item.company.bucket],
     n: item.n,
-    a: { value: item.indiaP50, label: `India ${shortMedianLabel(item.indiaP50, item.n, cur)}`, size },
+    a: { value: item.indiaP50, label: `IN ${shortMedianLabel(item.indiaP50, item.n, cur)}`, size },
     b: { value: item.usP50, label: `US ${formatMoney(item.usP50, cur)}`, size, hollow: true },
     midLabel: formatPct(item.value / 100),
     tooltip: tooltipBox(BUCKET_COLORS[item.company.bucket], item.company.name, [
@@ -44,12 +45,6 @@ const KEY: KeyItem[] = [
   { glyph: 'value', text: '26%', label: 'India ÷ US' },
 ];
 
-const HELP = [
-  'Filled dot: India median total comp. Hollow dot: US median at the same company.',
-  'Label between the dots: the India median as a share of the US median.',
-  'Number in brackets: India salaries. Light tint: under 20.',
-];
-
 export function buildIndiaVsUs(ctx: ChartContext): ChartSpec {
   const context = 'Total comp median · same company';
   const rows = items(ctx);
@@ -59,7 +54,6 @@ export function buildIndiaVsUs(ctx: ChartContext): ChartSpec {
     option: dotRowsOption(ctx, rows.map(r => toRow(ctx, r))),
     context,
     key: KEY,
-    help: HELP,
     legend: ctx.visible.filter(b => rows.some(r => r.company.bucket === b)),
     source: sourceLine(ctx, `Median total comp at ${rows.length} companies with both. ${rows.reduce((s, r) => s + r.n, 0).toLocaleString('en-US')} India salaries.`, 'in India and the US'),
     table: {

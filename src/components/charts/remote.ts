@@ -4,7 +4,7 @@ import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
 import type { Bucket, RemoteBlock } from '@/lib/types';
 import { dotRowsOption, type DotRow } from './dotRows';
 import type { KeyItem } from '@/lib/chartKey';
-import { bucketCounts, emptySpec, medianLabel, nullPoolMessage, sourceLine, sqrtSize, tooltipBox, type ChartContext, type ChartSpec } from './shared';
+import { bucketCounts, emptySpec, nullPoolMessage, sourceLine, sqrtSize, tooltipBox, type ChartContext, type ChartSpec } from './shared';
 
 interface Other { label: string; value: number; rows: number }
 interface Item { bucket: Bucket; remote: RemoteBlock; other: Other; value: number }
@@ -28,8 +28,9 @@ function items(ctx: ChartContext): Item[] {
   });
 }
 
+/** Labels stay money-only; the key names the dots and the tooltip carries the counts. */
 function subText(item: Item): string {
-  return `${item.remote.remoteRows.toLocaleString('en-US')} of ${item.remote.allRows.toLocaleString('en-US')} salaries are remote (${formatPct(item.value / 100)})`;
+  return `${formatPct(item.value / 100)} remote`;
 }
 
 function toRow(ctx: ChartContext, item: Item, maxN: number): DotRow {
@@ -41,8 +42,8 @@ function toRow(ctx: ChartContext, item: Item, maxN: number): DotRow {
     name: BUCKET_LABELS[item.bucket],
     color: BUCKET_COLORS[item.bucket],
     n: remote.remoteRows,
-    a: { value: other.value, label: `${other.label} ${medianLabel(other.value, other.rows, cur)}`, size: sqrtSize(other.rows, maxN, ctx.scale), hollow: true },
-    b: { value: remote.tcP50, label: `remote ${medianLabel(remote.tcP50, remote.remoteRows, cur)}`, size: sqrtSize(remote.remoteRows, maxN, ctx.scale) },
+    a: { value: other.value, label: formatMoney(other.value, cur), size: sqrtSize(other.rows, maxN, ctx.scale), hollow: true },
+    b: { value: remote.tcP50, label: formatMoney(remote.tcP50, cur), size: sqrtSize(remote.remoteRows, maxN, ctx.scale) },
     subText: subText(item),
     tooltip: tooltipBox(BUCKET_COLORS[item.bucket], BUCKET_LABELS[item.bucket], [
       { label: 'Remote median', value: formatMoney(remote.tcP50, cur) },
@@ -62,15 +63,6 @@ function keyFor(otherName: string): KeyItem[] {
   ];
 }
 
-function helpFor(otherName: string): string[] {
-  return [
-    'Filled dot: median total comp of remote salaries.',
-    `Hollow dot: median total comp of ${otherName} salaries.`,
-    'A bigger dot means more salaries behind that median.',
-    'Remote is what the person submitting said.',
-  ];
-}
-
 export function buildRemote(ctx: ChartContext): ChartSpec {
   const hasOffice = items(ctx).some(i => i.remote.officeP50 !== undefined);
   const otherName = hasOffice ? 'office / hybrid' : 'all salaries';
@@ -85,7 +77,6 @@ export function buildRemote(ctx: ChartContext): ChartSpec {
     option: dotRowsOption(ctx, rows.map(r => toRow(ctx, r, maxN))),
     context,
     key: keyFor(otherName),
-    help: helpFor(otherName),
     legend: rows.map(r => r.bucket),
     source: sourceLine(ctx, `${bucketCounts(rows.map(r => r.bucket), b => rows.find(r => r.bucket === b)!.remote.allRows)} Remote is what the person submitting said.`),
     table: {

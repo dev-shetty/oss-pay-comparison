@@ -21,16 +21,21 @@ function IconAction({ label, onClick, children }: { label: string; onClick: () =
 }
 
 export function CardActions({ onCopyLink, onSavePng, onShowTable }: CardActionsProps) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const copy = async () => {
-    await onCopyLink();
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await onCopyLink();
+      setStatus('copied');
+    } catch {
+      setStatus('failed');
+    }
+    window.setTimeout(() => setStatus('idle'), 1500);
   };
+  const copyLabel = { idle: 'Copy link', copied: 'Copied', failed: 'Copy failed' }[status];
   return (
     <div className="flex items-center gap-0.5 text-sub">
-      <IconAction label={copied ? 'Copied' : 'Copy link'} onClick={() => void copy()}>
-        {copied ? <Check className="text-inp" /> : <Link2 />}
+      <IconAction label={copyLabel} onClick={() => void copy()}>
+        {status === 'copied' ? <Check className="text-inp" /> : <Link2 />}
       </IconAction>
       {onSavePng && <IconAction label="Save PNG" onClick={onSavePng}><ImageDown /></IconAction>}
       {onShowTable && <IconAction label="Show table" onClick={onShowTable}><Table2 /></IconAction>}

@@ -11,6 +11,7 @@ export interface YoeRow {
   color: string;
   off?: boolean;
   hint?: string;
+  badge?: string;
   bands: Partial<Record<Yoe, Pct>>;
 }
 
@@ -84,7 +85,8 @@ function tooltipFor({ row, yoe }: Datum, cur: Currency): string {
 }
 
 function axisName(rows: YoeRow[], name: string): string {
-  return filterMark(name, Boolean(rows.find(r => r.name === name)?.hint));
+  const row = rows.find(r => r.name === name);
+  return filterMark(name, row?.badge, row?.off);
 }
 
 function toData(rows: YoeRow[]): Datum[] {

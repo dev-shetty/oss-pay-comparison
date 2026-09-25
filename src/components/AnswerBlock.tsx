@@ -1,6 +1,6 @@
 import type { Answer, HeroRow } from '@/lib/answer';
 import { formatMoney, formatRatio } from '@/lib/format';
-import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
+import { BUCKET_COLORS, BUCKET_LABELS, HERO_TITLE } from '@/lib/theme';
 import type { Currency } from '@/lib/types';
 
 interface AnswerBlockProps {
@@ -71,7 +71,7 @@ export function AnswerBlock({ answer, cur, present }: AnswerBlockProps) {
   const sizes = present ? SIZES.present : SIZES.explore;
   return (
     <section aria-label="The answer" className={sizes.root}>
-      <h1 className={`${sizes.headline} leading-[1.05] font-extrabold tracking-[-0.02em] text-balance text-ink`}>{answer.headline}</h1>
+      <h1 style={present ? { viewTransitionName: HERO_TITLE } : undefined} className={`${sizes.headline} leading-[1.05] font-extrabold tracking-[-0.02em] text-balance text-ink`}>{answer.headline}</h1>
       <ul className={`flex flex-col ${sizes.list}`}>
         {answer.rows.map(row => <StripRow key={row.bucket} row={row} max={answer.max} cur={cur} sizes={sizes} />)}
       </ul>

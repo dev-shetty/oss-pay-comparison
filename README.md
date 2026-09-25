@@ -37,7 +37,7 @@ Filter state lives in the URL query string. Example:
 | `cut` | `all` (default), `level`, `yoe` |
 | `cur` | `usd` (default), `inr` |
 | `b` | visible buckets, comma list of `oss,faang,inp,insvc` |
-| `rh`, `cf`, `db`, `am` | `0` removes Red Hat, Confluent, Databricks, Automattic from the OSS pool |
+| `pu`, `oc`, `op`, `sa` | `0` removes an OSS group: Pure OSS, Open core, Proprietary on OSS, Source-available |
 | `sort` | `value` (default), `bucket` |
 | `present`, `card` | `present=1` opens Present mode at card index `card` |
 
@@ -56,15 +56,22 @@ Present mode: `←` `→` step cards, `Esc` exits. The disclaimer card is always
 
 2. Run the calls with the `levels-mcp-comp-benchmark` MCP. Call `amazon` and `microsoft`
    alone; batching them drops the transport.
-3. Fill the matching pool in `src/data/snapshot.json`. Pool keys: `oss:rh1-cf1-db1-am1`
-   (1 = company included), `faang`, `inp`, `insvc`. A pool that is not pulled yet stays
-   `null` and the UI shows "Not pulled yet".
-4. `pnpm check:data`, then `pnpm build`.
+3. Fill the matching pool in `src/data/snapshot.json`. OSS pool keys: `oss:pu1-oc1-op1-sa1`
+   (1 = group included; all 15 non-empty combinations), then `faang`, `inp`, `insvc`.
+4. `pnpm check:data`, then `pnpm build`. The check fails if an OSS pool's `n` is not the sum of
+   its companies' `n`.
 
-Seed status (2026-09-20): `oss:rh1-cf1-db1-am1`, `oss:rh0-cf1-db1-am1`, `faang`, `inp` and
-`insvc` are filled from `research/05-five-year-data.md`. The other 14 OSS toggle pools are
-`null`. `base.byYoe` is `null` for every bucket. `insvc` has only `tc.all` (approx, median
-of the TCS and Infosys medians), `base.all` (same method) and `tc.byYoe`.
+OSS groups (rule: grouped by the license of the product sold, at least 5 India salaries in 5 years):
+
+| Group | Companies |
+|---|---|
+| Pure OSS | Red Hat, Canonical, SUSE, Automattic |
+| Open core | GitLab, Elastic |
+| Proprietary on OSS | Confluent, Databricks, Cloudera, Acquia |
+| Source-available | HashiCorp, MongoDB |
+
+Pulled 2026-09-25: all 15 OSS group pools and the 12 OSS company rows. `faang`, `inp`, `insvc` are
+from 2026-09-21. Left out for fewer than 5 India salaries: PostHog (0), Grafana Labs (2), Mozilla (0).
 
 ## Deploy
 

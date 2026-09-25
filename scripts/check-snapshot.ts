@@ -5,7 +5,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { BUCKETS, LEVELS, TOGGLES, YEARS, YOES, type Snapshot } from '../src/lib/types';
+import { BUCKETS, LEVELS, OSS_GROUPS, YEARS, YOES, type OssGroup, type Snapshot } from '../src/lib/types';
+import { ossPoolKey } from '../src/lib/pools';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const file = path.resolve(here, '../src/data/snapshot.json');
@@ -27,6 +28,10 @@ function checkPct(where: string, v: unknown) {
   if (!isNum(p.p75)) fail(where, 'p75 must be a number');
   if (!Number.isInteger(p.n) || (p.n as number) < -1) fail(where, 'n must be an integer >= -1');
   if (p.approx !== undefined && typeof p.approx !== 'boolean') fail(where, 'approx must be boolean');
+  for (const k of ['p10', 'p90']) if (p[k] !== undefined && !isNum(p[k])) fail(where, `${k} must be a number when present`);
+  if (p.p10 === undefined && p.p90 === undefined) return;
+  const order = [p.p10, p.p25, p.p50, p.p75, p.p90].filter(isNum);
+  if (order.some((v, i) => i > 0 && v < order[i - 1])) fail(where, 'must satisfy p10 <= p25 <= p50 <= p75 <= p90');
 }
 
 function checkKeyed(where: string, v: unknown, keys: readonly string[], check: (w: string, x: unknown) => void) {
@@ -79,25 +84,32 @@ function checkPool(where: string, v: unknown) {
   }
 }
 
+/** Every non-empty group combination needs a pool, and its n must equal the sum of its companies' n. */
+function checkOssPools(s: Snapshot) {
+  for (let mask = 1; mask < 1 << OSS_GROUPS.length; mask += 1) {
+    const groups = Object.fromEntries(OSS_GROUPS.map((g, i) => [g, ((mask >> (OSS_GROUPS.length - 1 - i)) & 1) === 1])) as Record<OssGroup, boolean>;
+    const key = ossPoolKey(groups);
+    const pool = s.pools[key];
+    if (!pool) { fail('pools', `missing or null ${key}`); continue; }
+    const expected = s.companies.filter(c => c.group && groups[c.group]).reduce((sum, c) => sum + (c.tc?.n ?? 0), 0);
+    if (pool.n !== expected) fail(`pools.${key}`, `n ${pool.n} != company sum ${expected}`);
+  }
+}
+
 function checkSnapshot(s: Snapshot) {
   if (!s.meta || s.meta.window !== '0-60' || !isNum(s.meta.inrPerUsd)) fail('meta', 'window must be 0-60 and inrPerUsd a number');
-  if (JSON.stringify(s.meta.toggles) !== JSON.stringify(TOGGLES)) fail('meta.toggles', `must equal ${TOGGLES.join(',')}`);
-  if (s.companies.length !== 24) fail('companies', `expected 24, got ${s.companies.length}`);
+  if (s.companies.length !== 26) fail('companies', `expected 26, got ${s.companies.length}`);
   for (const c of s.companies) {
     if (!BUCKETS.includes(c.bucket)) fail(`companies.${c.slug}`, `bad bucket ${c.bucket}`);
+    if ((c.bucket === 'oss') !== (c.group !== null && OSS_GROUPS.includes(c.group))) fail(`companies.${c.slug}`, 'OSS companies need a group; others need group null');
     if (c.tc !== null) {
       checkPct(`companies.${c.slug}.tc`, c.tc);
       if (c.tc.byYoe !== undefined) checkKeyed(`companies.${c.slug}.tc.byYoe`, c.tc.byYoe, YOES, checkPct);
     }
     if (c.base !== null) checkPct(`companies.${c.slug}.base`, c.base);
   }
-  for (let mask = 0; mask < 16; mask += 1) {
-    const bit = (i: number) => ((mask >> i) & 1 ? '1' : '0');
-    const key = `oss:rh${bit(3)}-cf${bit(2)}-db${bit(1)}-am${bit(0)}`;
-    if (!(key in s.pools)) fail('pools', `missing key ${key}`);
-  }
+  checkOssPools(s);
   for (const k of ['faang', 'inp', 'insvc']) if (!(k in s.pools)) fail('pools', `missing key ${k}`);
-  if (!s.pools['oss:rh1-cf1-db1-am1']) fail('pools', 'the all-on OSS pool must not be null');
   for (const [key, pool] of Object.entries(s.pools)) checkPool(`pools.${key}`, pool);
   for (const e of s.external) {
     if (!e.company || !e.policy || !e.floor || !Array.isArray(e.links)) fail(`external.${e.company}`, 'needs company, policy, floor, links[]');

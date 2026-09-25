@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CardControls } from '@/components/CardControls';
 import { ChartCard } from '@/components/ChartCard';
@@ -9,27 +9,29 @@ import { TopNav } from '@/components/TopNav';
 import { PresentMode } from '@/components/PresentMode';
 import { CompaniesCard } from '@/components/CompaniesCard';
 import { MethodCard } from '@/components/MethodCard';
+import { TermsCard } from '@/components/TermsCard';
+import { ClosingCard } from '@/components/ClosingCard';
+import { QuestionsCard } from '@/components/QuestionsCard';
 import { DisclaimerCard, PoliciesCard } from '@/components/TextCards';
 import type { ChartContext } from '@/components/charts/shared';
 import snapshotJson from '@/data/snapshot.json';
 import { useCardOptions } from '@/lib/cardOptions';
 import { buildAnswer } from '@/lib/answer';
+import { scrollToHashCard } from '@/lib/cardLink';
 import { CARDS, EXPLORE_HIDDEN, type CardDef } from '@/lib/cards';
 import { selectPools } from '@/lib/pools';
-import { type FilterState, type Snapshot, type ToggleSlug } from '@/lib/types';
+import { type FilterState, type Snapshot } from '@/lib/types';
 import { activeFilterCount, useUrlState } from '@/lib/urlState';
 import { formatPulledAt } from '@/lib/format';
 
 const snapshot = snapshotJson as Snapshot;
 const PRESENT_SCALE = 1.4;
 
-/** Chart clicks arrive as a slug (bar) or an axis label such as "Red Hat (out)". */
-function toggleCompany(state: FilterState, slugOrName: string): Partial<FilterState> | null {
-  const label = slugOrName.replace(/ \(out\)$/, '');
-  const company = snapshot.companies.find(c => c.slug === slugOrName || c.name === label);
-  if (!company || !snapshot.meta.toggles.includes(company.slug as ToggleSlug)) return null;
-  const key = company.slug as ToggleSlug;
-  return { toggles: { ...state.toggles, [key]: !state.toggles[key] } };
+/** Chart clicks arrive as a slug (bar) or an axis label (company name). A click flips the company's whole group. */
+function toggleCompanyGroup(state: FilterState, slugOrName: string): Partial<FilterState> | null {
+  const group = snapshot.companies.find(c => c.slug === slugOrName || c.name === slugOrName)?.group;
+  if (!group) return null;
+  return { groups: { ...state.groups, [group]: !state.groups[group] } };
 }
 
 function cardHeight(card: CardDef): number {
@@ -46,21 +48,30 @@ export default function App() {
     [state, pools, options],
   );
 
+  useEffect(() => {
+    scrollToHashCard();
+    window.addEventListener('hashchange', scrollToHashCard);
+    return () => window.removeEventListener('hashchange', scrollToHashCard);
+  }, []);
+
   const answer = useMemo(() => buildAnswer(pools, state, snapshot.meta.pulledAt), [pools, state]);
 
   const renderCard = (card: CardDef, present: boolean) => {
-    const title = present ? card.poll : card.title(ctx);
+    const title = card.poll;
     if (card.kind === 'answer') return <AnswerBlock key={card.id} answer={answer} cur={state.cur} present={present} />;
     if (card.kind === 'disclaimer') return <DisclaimerCard key={card.id} id={card.id} title={title} present={present} />;
+    if (card.kind === 'questions') return <QuestionsCard key={card.id} id={card.id} title={title} present={present} questions={card.questions ?? []} heroTitle={card.id === 'warm-up'} />;
+    if (card.kind === 'closing') return <ClosingCard key={card.id} id={card.id} title={title} present={present} />;
+    if (card.kind === 'terms') return <TermsCard key={card.id} id={card.id} title={title} present={present} />;
     if (card.kind === 'method') return <MethodCard key={card.id} id={card.id} title={title} present={present} snapshot={snapshot} />;
     if (card.kind === 'companies') return <CompaniesCard key={card.id} id={card.id} title={title} present={present} snapshot={snapshot} state={state} />;
     if (card.kind === 'policies') return <PoliciesCard key={card.id} id={card.id} title={title} present={present} external={snapshot.external} />;
     const onClickName = card.id === 'per-company'
-      ? (name: string) => { const patch = toggleCompany(state, name); if (patch) update(patch); }
+      ? (name: string) => { const patch = toggleCompanyGroup(state, name); if (patch) update(patch); }
       : undefined;
     const controls = present ? undefined : <CardControls cardId={card.id} options={options} onChange={updateOptions} />;
     return (
-      <ChartCard key={card.id} id={card.id} title={title} ctx={ctx} build={card.build!} present={present} height={cardHeight(card)} controls={controls} onClickName={onClickName} />
+      <ChartCard key={card.id} id={card.id} title={title} ctx={ctx} build={card.build!} present={present} height={cardHeight(card)} controls={controls} onClickName={onClickName} takeaways={card.takeaways} />
     );
   };
 

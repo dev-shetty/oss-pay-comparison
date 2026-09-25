@@ -81,7 +81,7 @@ function renderRow(rows: DotRow[], cur: Currency, scale: number) {
       children.push(text(mid, aboveTaken ? y0 + lift : y0 - lift, row.midLabel, row.n < SMALL_N ? COLORS.sub : row.color, size, 800, 'center', opacity));
     }
     if (row.subText) {
-      children.push(text(x(Math.min(row.a.value, row.b.value)) - Math.min(row.a.size, row.b.size) / 2, y0 + h * 0.3, row.subText, COLORS.mute, size - 1, 600, 'left'));
+      children.push(text(x(Math.min(row.a.value, row.b.value)) - Math.min(row.a.size, row.b.size) / 2, y0 + Math.max(h * 0.3, Math.max(row.a.size, row.b.size) / 2 + px(10, scale)), row.subText, COLORS.mute, size - 1, 600, 'left'));
     }
     return { type: 'group', children };
   };

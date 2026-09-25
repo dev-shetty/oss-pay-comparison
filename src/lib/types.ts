@@ -1,15 +1,15 @@
 export type Bucket = 'oss' | 'faang' | 'inp' | 'insvc';
-export type SubBucket = 'pure' | 'eoss' | 'oss-heavy';
+/** OSS companies grouped by the license of the product they sell. Each group is one filter toggle. */
+export type OssGroup = 'pure' | 'open-core' | 'oss-projects' | 'source-available';
 export type Level = 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 export type Yoe = '0-1' | '2-4' | '5-7' | '8-11' | '12-15' | '16+';
 export type Year = '2021' | '2022' | '2023' | '2024' | '2025' | '2026';
-export type ToggleSlug = 'red-hat' | 'confluent' | 'databricks' | 'automattic';
 
 export const BUCKETS: Bucket[] = ['oss', 'faang', 'inp', 'insvc'];
 export const LEVELS: Level[] = ['L1', 'L2', 'L3', 'L4', 'L5'];
 export const YOES: Yoe[] = ['0-1', '2-4', '5-7', '8-11', '12-15', '16+'];
 export const YEARS: Year[] = ['2021', '2022', '2023', '2024', '2025', '2026'];
-export const TOGGLES: ToggleSlug[] = ['red-hat', 'confluent', 'databricks', 'automattic'];
+export const OSS_GROUPS: OssGroup[] = ['pure', 'open-core', 'oss-projects', 'source-available'];
 
 /** n = -1 means the API predicted the row; the UI never draws it. p50 can be missing on thin slices. */
 export interface Pct {
@@ -18,6 +18,8 @@ export interface Pct {
   p75: number;
   n: number;
   approx?: boolean;
+  p10?: number;
+  p90?: number;
 }
 
 export interface EquityRow {
@@ -66,7 +68,7 @@ export interface Company {
   slug: string;
   name: string;
   bucket: Bucket;
-  sub: SubBucket | null;
+  group: OssGroup | null;
   tc: CompanyPct | null;
   base: Pct | null;
   remoteShare?: number;
@@ -92,7 +94,6 @@ export interface Meta {
   jobFamily: string;
   location: string;
   inrPerUsd: number;
-  toggles: ToggleSlug[];
   callCount?: number;
   pullErrors?: string[];
   pullNotes?: string[];
@@ -115,7 +116,7 @@ export interface FilterState {
   cut: Cut;
   cur: Currency;
   buckets: Bucket[];
-  toggles: Record<ToggleSlug, boolean>;
+  groups: Record<OssGroup, boolean>;
   sort: SortMode;
   present: boolean;
   card: number;

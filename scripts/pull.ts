@@ -20,7 +20,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TOGGLES, type Snapshot, type ToggleSlug } from '../src/lib/types';
+import { ossPoolKey } from '../src/lib/pools';
+import { OSS_GROUPS, type OssGroup, type Snapshot } from '../src/lib/types';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT = path.resolve(here, '../src/data/snapshot.json');
@@ -28,7 +29,13 @@ const RESPONSES = path.resolve(here, 'responses');
 
 const BASE = { timeRange: '0-60', locationSlugs: ['india'], jobFamilySlug: 'software-engineer' } as const;
 
-const OSS_FIXED = ['gitlab', 'hashicorp', 'elastic', 'mongodb', 'posthog', 'grafana'];
+/** Rule: grouped by the license of the product sold; at least 5 India salaries over 5 years. */
+const OSS_GROUP_SLUGS: Record<OssGroup, string[]> = {
+  pure: ['red-hat', 'canonical', 'suse', 'automattic'],
+  'open-core': ['gitlab', 'elastic'],
+  'oss-projects': ['confluent', 'databricks', 'cloudera', 'acquia'],
+  'source-available': ['hashicorp', 'mongodb'],
+};
 const FAANG = ['google', 'microsoft', 'amazon', 'meta', 'apple', 'netflix'];
 const INP = ['flipkart', 'swiggy', 'razorpay', 'phonepe', 'zoho', 'freshworks'];
 const INSVC = ['infosys', 'tata-consultancy-services'];
@@ -41,13 +48,11 @@ interface Call {
 }
 
 function ossSlugs(mask: number): { key: string; slugs: string[] } {
-  const on = (slug: ToggleSlug) => ((mask >> (3 - TOGGLES.indexOf(slug))) & 1) === 1;
-  const bit = (slug: ToggleSlug) => (on(slug) ? '1' : '0');
-  const key = `oss:rh${bit('red-hat')}-cf${bit('confluent')}-db${bit('databricks')}-am${bit('automattic')}`;
-  return { key, slugs: [...OSS_FIXED, ...TOGGLES.filter(on)] };
+  const groups = Object.fromEntries(OSS_GROUPS.map((g, i) => [g, ((mask >> (OSS_GROUPS.length - 1 - i)) & 1) === 1])) as Record<OssGroup, boolean>;
+  return { key: ossPoolKey(groups), slugs: OSS_GROUPS.filter(g => groups[g]).flatMap(g => OSS_GROUP_SLUGS[g]) };
 }
 
-/** One pool = 6 calls. The by-experience base call is the one the seed is missing for every bucket. */
+/** One pool = 7 calls: this list plus get-salary-percentiles with remoteFilter "exclude" for remote.office*. */
 function poolCalls(key: string, companySlugs: string[]): Call[] {
   const id = key.replace(':', '_');
   return [
@@ -63,8 +68,8 @@ function poolCalls(key: string, companySlugs: string[]): Call[] {
 /** get-company-comparison takes at most 7 slugs and silently drops companies with 0 rows. */
 function companyCalls(): Call[] {
   const batches: [string, string[]][] = [
-    ['oss_a', ['gitlab', 'hashicorp', 'elastic', 'mongodb', 'confluent', 'red-hat', 'automattic']],
-    ['oss_b', ['posthog', 'grafana', 'databricks']],
+    ['oss_a', ['red-hat', 'canonical', 'suse', 'automattic', 'gitlab', 'elastic', 'confluent']],
+    ['oss_b', ['databricks', 'cloudera', 'acquia', 'hashicorp', 'mongodb']],
     ['faang_a', ['google', 'meta', 'apple', 'netflix']],
     ['amazon', ['amazon']],
     ['microsoft', ['microsoft']],
@@ -80,7 +85,7 @@ function companyCalls(): Call[] {
 }
 
 function usReferenceCalls(): Call[] {
-  return ['google', 'amazon', 'meta', 'mongodb', 'gitlab', 'hashicorp'].map(slug => ({
+  return ['google', 'amazon', 'meta', 'mongodb', 'gitlab', 'hashicorp', 'red-hat'].map(slug => ({
     id: `us__${slug}`,
     tool: 'get-salary-percentiles',
     params: { timeRange: '0-60', locationSlugs: ['united-states'], jobFamilySlug: 'software-engineer', companySlugs: [slug], salaryType: 'total_compensation' },
@@ -90,7 +95,7 @@ function usReferenceCalls(): Call[] {
 
 function plan(): Call[] {
   const calls: Call[] = [];
-  for (let mask = 0; mask < 16; mask += 1) {
+  for (let mask = 1; mask < 1 << OSS_GROUPS.length; mask += 1) {
     const { key, slugs } = ossSlugs(mask);
     calls.push(...poolCalls(key, slugs));
   }

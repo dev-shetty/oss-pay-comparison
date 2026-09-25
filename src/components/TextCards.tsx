@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { copyCardLink } from '@/lib/cardLink';
 import { WATERMARK } from '@/lib/theme';
 import type { External } from '@/lib/types';
 import { CardActions } from './CardActions';
@@ -10,25 +11,23 @@ export interface TextCardProps {
   title: string;
   present: boolean;
   children: React.ReactNode;
+  /** Full-bleed slides (the closing poster) carry their own heading and branding. */
+  hideHeader?: boolean;
 }
 
-function copyLink(id: string) {
-  return navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}${window.location.search}#${id}`);
-}
-
-export function TextCard({ id, title, present, children }: TextCardProps) {
+export function TextCard({ id, title, present, children, hideHeader = false }: TextCardProps) {
   const titleClass = present ? 'text-[2.4rem] leading-tight font-extrabold' : 'text-xl leading-tight font-extrabold';
   return (
     <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${present ? 'h-full' : ''}`}>
-      <CardHeader className="border-b border-border pb-3">
+      {!hideHeader && <CardHeader className={`border-b border-border pb-3 ${present ? 'px-8' : ''}`}>
         <div className="flex items-start justify-between gap-4">
           <h2 className={`${titleClass} text-ink`}>{title}</h2>
-          {!present && <CardActions onCopyLink={() => copyLink(id)} />}
+          {!present && <CardActions onCopyLink={() => copyCardLink(id)} />}
         </div>
-      </CardHeader>
+      </CardHeader>}
       <CardContent className={`relative pt-4 pb-8 ${present ? 'flex min-h-0 flex-1 flex-col justify-center' : ''}`}>
         {children}
-        <img src={WATERMARK} alt="Levels.fyi" className="absolute right-6 bottom-2 h-5 opacity-60" />
+        {!hideHeader && <img src={WATERMARK} alt="Levels.fyi" className="absolute right-6 bottom-2 h-5 opacity-60" />}
       </CardContent>
     </Card>
   );
@@ -72,7 +71,6 @@ export function PoliciesCard({ id, title, present, external }: Omit<TextCardProp
           ))}
         </TableBody>
       </Table>
-      <p className={`${present ? 'text-base' : 'text-xs'} text-mute mt-4`}>Context only. These come from company handbooks and job posts, not from the salary data. Companies that publish nothing beyond a careers page are left out. Pages checked September 2026; "Not found" means the page did not state it.</p>
     </TextCard>
   );
 }

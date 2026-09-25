@@ -91,11 +91,6 @@ function xAxes(ctx: ChartContext, count: number) {
 
 const KEY: KeyItem[] = [{ glyph: 'dashed', label: 'partial year' }];
 
-const HELP = [
-  'Each panel splits one bucket\'s salaries by the year they were submitted.',
-  'Dashed: a partial year. 2021 covers Sep to Dec only, 2026 covers Jan to Sep only.',
-];
-
 export function buildRowsPerYear(ctx: ChartContext): ChartSpec {
   const context = 'Share of each bucket\'s salaries · by year';
   const missing = nullPoolMessage(ctx);
@@ -125,7 +120,6 @@ export function buildRowsPerYear(ctx: ChartContext): ChartSpec {
     option,
     context,
     key: KEY,
-    help: HELP,
     legend: buckets,
     source: sourceLine(ctx, bucketCounts(buckets, b => itemsFor(ctx, b)[0].total)),
     table: {

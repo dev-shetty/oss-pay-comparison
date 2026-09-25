@@ -1,7 +1,7 @@
 import type { CustomSeriesRenderItemReturn, EChartsOption } from 'echarts';
 import type { CardOptions } from '@/lib/cardOptions.types';
 import type { KeyItem } from '@/lib/chartKey';
-import type { PoolMap } from '@/lib/pools';
+import { allGroupsOff, type PoolMap } from '@/lib/pools';
 import { ANIMATION_MS, BUCKET_LABELS, COLORS, FONT_FAMILY, SMALL_N, STORY_N, STORY_OPACITY, WATERMARK, lighten, px } from '@/lib/theme';
 import { axisMoney, formatMoney, formatSalaries, windowText } from '@/lib/format';
 import type { Bucket, Currency, FilterState, Pct, Snapshot, TableData } from '@/lib/types';
@@ -26,12 +26,9 @@ export interface ChartSpec {
   key: KeyItem[];
   source: string;
   legend?: Bucket[];
-  help?: string[];
   missing?: string;
   /** Overrides the card's default chart height when the row count drives it. */
   height?: number;
-  /** Charts that draw a middle-50% band show a worked example of how to read it. */
-  guide?: 'dot' | 'tick';
 }
 
 const TINT = 0.55;
@@ -111,14 +108,31 @@ export function nColor(n: number, color: string): string {
   return n >= 0 && n < SMALL_N ? lighten(color, TINT) : color;
 }
 
-/** Axis-label marker after company names that the chart can toggle in or out of the OSS pool. */
-export function filterMark(name: string, toggleable: boolean): string {
-  return toggleable ? `${name} {mark|filter}` : name;
+/** Axis-label badge after an OSS company name: its license group, which a click toggles in or out of the pool. Excluded names are struck through. */
+export function filterMark(name: string, badge: string | undefined, off = false): string {
+  const label = off ? `{off|${name}}` : name;
+  return badge ? `${label} {mark|${badge}}` : label;
+}
+
+let strikeImage: HTMLCanvasElement | undefined;
+
+/** ECharts 5 text has no line-through, so a 1px-wide canvas with a centred line is stretched behind the name. */
+function strikeThrough(): HTMLCanvasElement {
+  if (!strikeImage) {
+    strikeImage = document.createElement('canvas');
+    strikeImage.width = 1;
+    strikeImage.height = 12;
+    const g = strikeImage.getContext('2d')!;
+    g.fillStyle = COLORS.mute;
+    g.fillRect(0, 6, 1, 1);
+  }
+  return strikeImage;
 }
 
 export function filterMarkRich(scale: number) {
   return {
-    mark: { color: COLORS.blue, backgroundColor: lighten(COLORS.blue, 0.88), borderRadius: 3, padding: [1, 4], fontSize: labelSize(scale) - 3, fontWeight: 700 as const },
+    off: { color: COLORS.mute, backgroundColor: { image: strikeThrough() }, fontFamily: FONT_FAMILY, fontSize: labelSize(scale), fontWeight: 600 as const },
+    mark: { color: COLORS.blue, backgroundColor: lighten(COLORS.blue, 0.88), borderRadius: 3, padding: [1, 4], fontFamily: FONT_FAMILY, fontSize: labelSize(scale) - 3, fontWeight: 700 as const },
   };
 }
 
@@ -132,7 +146,7 @@ export function medianLabel(p50: number | null, n: number, cur: Currency): strin
   return `${formatMoney(p50, cur)} (${formatSalaries(n)})`;
 }
 
-/** For charts where "(103 salaries)" does not fit; the help popover says what the number is. */
+/** For charts where "(103 salaries)" does not fit; the tooltip says what the number is. */
 export function shortMedianLabel(p50: number | null, n: number, cur: Currency): string {
   return `${formatMoney(p50, cur)} (${n.toLocaleString('en-US')})`;
 }
@@ -203,11 +217,13 @@ export function tooltipBox(color: string, title: string, rows: TooltipRow[], not
 }
 
 export function pctRows(p: Pct, cur: Currency): TooltipRow[] {
-  return [
-    { label: 'Median', value: formatMoney(p.p50, cur) },
-    { label: 'Middle 50%', value: `${formatMoney(p.p25, cur)} – ${formatMoney(p.p75, cur)}` },
-    { label: 'Salaries (n)', value: p.n < 0 ? 'predicted' : p.n.toLocaleString('en-US') },
+  const rows: TooltipRow[] = [
+    { label: 'p50 (median)', value: formatMoney(p.p50, cur) },
+    { label: 'p25 – p75', value: `${formatMoney(p.p25, cur)} – ${formatMoney(p.p75, cur)}` },
   ];
+  if (p.p10 !== undefined && p.p90 !== undefined) rows.push({ label: 'p10 – p90', value: `${formatMoney(p.p10, cur)} – ${formatMoney(p.p90, cur)}` });
+  rows.push({ label: 'Salaries (n)', value: p.n < 0 ? 'predicted' : p.n.toLocaleString('en-US') });
+  return rows;
 }
 
 export function emptySpec(context: string, missing: string): ChartSpec {
@@ -221,5 +237,6 @@ export function visibleWithPools(ctx: ChartContext): Bucket[] {
 export function nullPoolMessage(ctx: ChartContext): string | undefined {
   const missing = ctx.visible.filter(b => ctx.pools[b] === null);
   if (missing.length === 0) return undefined;
-  return 'This OSS toggle combination is not pulled yet. Run scripts/pull.ts to fill it.';
+  if (missing.includes('oss') && allGroupsOff(ctx.state)) return 'Every OSS group is off. Turn one on in Filters.';
+  return 'This OSS group combination is not pulled yet. Run scripts/pull.ts to fill it.';
 }

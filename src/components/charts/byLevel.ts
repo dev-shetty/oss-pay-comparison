@@ -1,19 +1,16 @@
 import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams, CustomSeriesRenderItemReturn, EChartsOption } from 'echarts';
 import { formatMoney, formatRatio, toDisplay } from '@/lib/format';
 import { ratio } from '@/lib/pools';
-import { BUCKET_COLORS, BUCKET_LABELS, COLORS, FONT_FAMILY, STORY_N, px, withAlpha } from '@/lib/theme';
+import { BUCKET_COLORS, BUCKET_LABELS, COLORS, FONT_FAMILY, px, withAlpha } from '@/lib/theme';
 import { LEVELS, type Bucket, type Level, type Pct } from '@/lib/types';
 import { buildByLevelBars, levelSource, levelTable, pctAt } from './byLevelBars';
-import type { KeyItem } from '@/lib/chartKey';
-import { baseOption, categoryAxis, emptySpec, labelSize, lineFocus, metricName, moneyAxis, nColor, nOpacity, nullPoolMessage, pctRows, tooltipBox, type ChartContext, type ChartSpec, type CustomElement } from './shared';
+import { baseOption, categoryAxis, emptySpec, labelSize, lineFocus, metricName, moneyAxis, nColor, nOpacity, nullPoolMessage, pctRows, tooltipBox, type ChartContext, type ChartSpec, type CustomElement, type TooltipRow } from './shared';
 
-const CORE: Level[] = ['L1', 'L2', 'L3'];
-
-/** L4 joins the slope only when every visible bucket measured it; one predicted point would bend the story. */
+/** Levels where at least one visible bucket has a measured median; each line then stops at its own last measured level. */
 function slopeLevels(ctx: ChartContext): Level[] {
-  const l4Solid = ctx.visible.every(b => (pctAt(ctx, b, 'L4')?.n ?? -1) >= STORY_N);
-  return LEVELS.filter(level => CORE.includes(level) || (level === 'L4' && l4Solid));
+  return LEVELS.filter(level => ctx.visible.some(b => pctAt(ctx, b, level)));
 }
+
 
 function lineSeries(ctx: ChartContext, bucket: Bucket, levels: Level[]) {
   const { cur } = ctx.state;
@@ -28,13 +25,12 @@ function lineSeries(ctx: ChartContext, bucket: Bucket, levels: Level[]) {
     lineStyle: { width: px(3, scale), color },
     itemStyle: { color, borderColor: '#fff', borderWidth: px(2, scale) },
     ...lineFocus(),
-    data: levels.map((level, i) => {
+    data: levels.map(level => {
       const pct = pctAt(ctx, bucket, level);
       if (!pct) return { value: null };
       return {
-        value: toDisplay(pct.p50 ?? 0, cur), pct, level,
+        value: toDisplay(pct.p50 ?? 0, cur), pct, level, bucket,
         itemStyle: { color: nColor(pct.n, color), opacity: nOpacity(pct.n) },
-        label: { show: i === 0, position: 'left' as const, fontSize: labelSize(scale) - 1, fontWeight: 700 as const, color: COLORS.sub, formatter: () => formatMoney(pct.p50, cur) },
       };
     }),
   };
@@ -81,27 +77,6 @@ function gapSeries(ctx: ChartContext, levels: Level[]) {
   }];
 }
 
-function ratioSeries(ctx: ChartContext, levels: Level[]) {
-  if (!ctx.visible.includes('oss') || !ctx.visible.includes('faang')) return [];
-  const cur = ctx.state.cur;
-  return [{
-    type: 'scatter' as const,
-    name: 'ratio',
-    symbolSize: 0,
-    silent: true,
-    z: 20,
-    label: { show: true, position: 'top' as const, distance: px(12, ctx.scale), fontSize: labelSize(ctx.scale), color: COLORS.blue, fontWeight: 800 as const,
-      backgroundColor: 'rgba(255,255,255,0.85)', padding: [1, 4], borderRadius: 4,
-      formatter: (p: unknown) => (p as { data: { text: string } }).data.text },
-    data: levels.flatMap(level => {
-      const oss = pctAt(ctx, 'oss', level);
-      const r = ratio(oss?.p50, pctAt(ctx, 'faang', level)?.p50);
-      if (!oss || r === null) return [];
-      return [{ value: [level, toDisplay(oss.p50 ?? 0, cur)], text: formatRatio(r) }];
-    }),
-  }];
-}
-
 const END_GAP = 16;
 
 /** Pushes label centres apart top-down so neighbours never sit closer than `gap`. */
@@ -113,51 +88,69 @@ export function spreadYs(ys: number[], gap: number): number[] {
   return out;
 }
 
-interface EndItem { bucket: Bucket; value: number; text: string }
+type Edge = 'start' | 'end';
+
+interface EdgeItem { bucket: Bucket; level: Level; value: number; text: string; fill: string }
 
 /** zrender paints a text's stroke over its fill, so the halo is a second stroke-only text underneath. */
-function haloText(x: number, y: number, text: string, fill: string, scale: number): CustomElement[] {
-  const style = { x, y, text, align: 'left' as const, verticalAlign: 'middle' as const, fontSize: labelSize(scale), fontWeight: 800, fontFamily: FONT_FAMILY };
+function haloText(x: number, y: number, item: EdgeItem, edge: Edge, scale: number): CustomElement[] {
+  const style = {
+    x, y, text: item.text, align: edge === 'end' ? 'left' as const : 'right' as const, verticalAlign: 'middle' as const,
+    fontSize: edge === 'end' ? labelSize(scale) : labelSize(scale) - 1, fontWeight: edge === 'end' ? 800 : 700, fontFamily: FONT_FAMILY,
+  };
   return [
     { type: 'text', silent: true, z2: 4, style: { ...style, stroke: '#fff', lineWidth: px(4, scale) } },
-    { type: 'text', silent: true, z2: 6, style: { ...style, fill } },
+    { type: 'text', silent: true, z2: 6, style: { ...style, fill: item.fill } },
   ];
 }
 
-/** Bucket name + median at the last level; n lives in the tooltip so the labels stay short enough to de-collide. */
-function endLabelSeries(ctx: ChartContext, buckets: Bucket[], last: Level) {
+/** End: bucket name + median at the last measured level. Start: the median alone at the first. n lives in the tooltip so labels stay short enough to de-collide. */
+function edgeItems(ctx: ChartContext, buckets: Bucket[], levels: Level[], edge: Edge): EdgeItem[] {
   const cur = ctx.state.cur;
-  const items: EndItem[] = buckets.flatMap(bucket => {
-    const p = pctAt(ctx, bucket, last);
-    return p ? [{ bucket, value: toDisplay(p.p50 ?? 0, cur), text: `${BUCKET_LABELS[bucket]} ${formatMoney(p.p50, cur)}` }] : [];
+  return buckets.flatMap(bucket => {
+    const measured = levels.filter(level => pctAt(ctx, bucket, level));
+    const level = edge === 'end' ? measured[measured.length - 1] : measured[0];
+    const p = level && pctAt(ctx, bucket, level);
+    if (!level || !p) return [];
+    const money = formatMoney(p.p50, cur);
+    return edge === 'end'
+      ? [{ bucket, level, value: toDisplay(p.p50 ?? 0, cur), text: `${BUCKET_LABELS[bucket]} ${money}`, fill: BUCKET_COLORS[bucket] }]
+      : [{ bucket, level, value: toDisplay(p.p50 ?? 0, cur), text: money, fill: COLORS.sub }];
   });
+}
+
+function edgeLabelSeries(ctx: ChartContext, buckets: Bucket[], levels: Level[], edge: Edge) {
+  const items = edgeItems(ctx, buckets, levels, edge);
+  const offset = px(edge === 'end' ? 12 : -10, ctx.scale);
   return [{
     type: 'custom' as const,
-    name: 'end-labels',
+    name: `${edge}-labels`,
     silent: true,
     z: 30,
     renderItem: (_: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI): CustomSeriesRenderItemReturn => {
-      const points = items.map(item => api.coord([last, item.value]));
-      const ys = spreadYs(points.map(p => p[1]), px(END_GAP, ctx.scale));
-      const x = points[0]?.[0] + px(12, ctx.scale);
-      return { type: 'group', children: items.flatMap((item, i) => haloText(x, ys[i], item.text, BUCKET_COLORS[item.bucket], ctx.scale)) };
+      const children = levels.flatMap(level => {
+        const group = items.filter(item => item.level === level);
+        const points = group.map(item => api.coord([level, item.value]));
+        const ys = spreadYs(points.map(p => p[1]), px(END_GAP, ctx.scale));
+        return group.flatMap((item, i) => haloText(points[i][0] + offset, ys[i], item, edge, ctx.scale));
+      });
+      return { type: 'group', children };
     },
-    data: items.length ? [{ value: [last, items[0].value] }] : [],
+    data: items.length ? [{ value: [items[0].level, items[0].value] }] : [],
   }];
 }
 
-const GAP_KEY: KeyItem[] = [
-  { glyph: 'wedgeAhead', label: 'OSS ahead' },
-  { glyph: 'wedgeBehind', label: 'OSS behind' },
-  { glyph: 'value', text: '1.2x', tone: 'blue', label: 'OSS ÷ FAANG+' },
-];
-
-const HELP = [
-  'Each line joins one bucket\'s median at each level.',
-  'Shade: the gap between OSS and FAANG+. Blue where OSS pays more, amber where it pays less.',
-  'Label: the OSS median divided by the FAANG+ median at that level.',
-  'Light dot: under 20 salaries. Faded: under 10.',
-];
+export function ossTooltipRows(ctx: ChartContext, pct: Pct, level: Level): TooltipRow[] {
+  const comparisons = ctx.visible.filter(b => b !== 'oss').flatMap(b => {
+    const r = ratio(pct.p50, pctAt(ctx, b, level)?.p50);
+    return r === null ? [] : [{ label: `vs ${BUCKET_LABELS[b]}`, value: formatRatio(r) }];
+  });
+  return [
+    { label: 'p50 (median)', value: formatMoney(pct.p50, ctx.state.cur) },
+    { label: 'Salaries (n)', value: pct.n.toLocaleString('en-US') },
+    ...comparisons,
+  ];
+}
 
 function buildSlope(ctx: ChartContext, context: string): ChartSpec {
   const levels = slopeLevels(ctx);
@@ -170,16 +163,16 @@ function buildSlope(ctx: ChartContext, context: string): ChartSpec {
     ...base,
     grid: { ...base.grid, left: px(72, ctx.scale), right: px(190, ctx.scale), top: px(40, ctx.scale) },
     tooltip: { ...base.tooltip, formatter: (p: unknown) => {
-      const { seriesName, color, data } = p as { seriesName: string; color: string; data: { pct?: Pct; level?: Level } };
-      if (!data.pct) return '';
-      return tooltipBox(color, `${seriesName} ${data.level}`, pctRows(data.pct, cur));
+      const { seriesName, color, data } = p as { seriesName: string; color: string; data: { pct?: Pct; level?: Level; bucket?: Bucket } };
+      if (!data.pct || !data.level) return '';
+      const rows = data.bucket === 'oss' ? ossTooltipRows(ctx, data.pct, data.level) : pctRows(data.pct, cur);
+      return tooltipBox(color, `${seriesName} ${data.level}`, rows);
     } },
     xAxis: categoryAxis(levels, ctx.scale, { boundaryGap: false }),
     yAxis: moneyAxis(cur, ctx.scale, { max: maxValue * 1.18, axisLabel: { show: false }, splitLine: { show: false } }),
-    series: [...gapSeries(ctx, levels), ...buckets.map(b => lineSeries(ctx, b, levels)), ...ratioSeries(ctx, levels), ...endLabelSeries(ctx, buckets, levels[levels.length - 1])],
+    series: [...gapSeries(ctx, levels), ...buckets.map(b => lineSeries(ctx, b, levels)), ...edgeLabelSeries(ctx, buckets, levels, 'start'), ...edgeLabelSeries(ctx, buckets, levels, 'end')],
   };
-  const key = ctx.visible.includes('oss') && ctx.visible.includes('faang') ? GAP_KEY : [];
-  return { option, context, key, help: HELP, legend: buckets, source: levelSource(ctx, buckets), table: levelTable(ctx, buckets, levels) };
+  return { option, context, key: [], legend: buckets, source: levelSource(ctx, buckets), table: levelTable(ctx, buckets, levels) };
 }
 
 export function buildByLevel(ctx: ChartContext): ChartSpec {

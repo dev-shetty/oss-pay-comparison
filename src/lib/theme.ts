@@ -40,6 +40,9 @@ export const ANIMATION_MS = 600;
 
 export const WATERMARK = watermarkUrl;
 
+/** view-transition-name shared by the warm-up question and the answer headline. */
+export const HERO_TITLE = 'hero-title';
+
 export function px(base: number, scale: number): number {
   return Math.round(base * scale);
 }

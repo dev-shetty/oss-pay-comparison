@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CardActions } from './CardActions';
 import { Chart, type ChartHandle } from './Chart';
 import { ChartLegend } from './ChartLegend';
-import { RangeGuide } from './RangeGuide';
 import { DataTableDialog } from './DataTableDialog';
 import type { ChartContext, ChartSpec } from './charts/shared';
+import { copyCardLink } from '@/lib/cardLink';
 import type { Bucket } from '@/lib/types';
 import { WATERMARK } from '@/lib/theme';
 
@@ -18,10 +18,7 @@ interface ChartCardProps {
   height: number | string;
   controls?: React.ReactNode;
   onClickName?: (name: string) => void;
-}
-
-function cardLink(id: string): string {
-  return `${window.location.origin}${window.location.pathname}${window.location.search}#${id}`;
+  takeaways?: string[];
 }
 
 function savePng(handle: ChartHandle | null, filename: string) {
@@ -40,20 +37,21 @@ interface ChartBodyProps {
   height: number | string;
   present: boolean;
   onClickName?: (name: string) => void;
+  takeaways?: string[];
 }
 
 function ChartBody({ spec, chartRef, height, present, onClickName }: ChartBodyProps) {
   if (spec.option) return <Chart ref={chartRef} option={spec.option} height={height} onClickName={onClickName} />;
   return (
     <div style={{ height }} className="flex flex-col items-center justify-center rounded-lg bg-muted text-sub">
-      <p className={`${present ? 'text-2xl' : 'text-base'} font-bold`}>Not pulled yet</p>
+      <p className={`${present ? 'text-2xl' : 'text-base'} font-bold`}>Nothing to show</p>
       <p className={`${present ? 'text-lg' : 'text-sm'} mt-1 max-w-md text-center`}>{spec.missing}</p>
       <img src={WATERMARK} alt="Levels.fyi" className="absolute right-6 bottom-2 h-5 opacity-60" />
     </div>
   );
 }
 
-export function ChartCard({ id, title, ctx, build, present, height, controls, onClickName }: ChartCardProps) {
+export function ChartCard({ id, title, ctx, build, present, height, controls, onClickName, takeaways }: ChartCardProps) {
   const chartRef = useRef<ChartHandle>(null);
   const [tableOpen, setTableOpen] = useState(false);
   const [hidden, setHidden] = useState<Bucket[]>([]);
@@ -66,17 +64,22 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
   const contextClass = present ? 'text-lg' : 'text-xs';
   return (
     <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${present ? 'h-full' : ''} ${missing ? 'opacity-70' : ''}`}>
-      <CardHeader className="gap-1 border-b border-border pb-3">
+      <CardHeader className={`gap-1 border-b border-border pb-3 ${present ? 'px-8' : ''}`}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <p className={`${contextClass} mb-1 font-bold text-mute`}>{spec.context}</p>
             <h2 className={`${titleClass} text-ink text-balance`}>{title}</h2>
+            {takeaways && (
+              <ul className={`mt-2 flex flex-col gap-1 font-semibold text-sub ${present ? 'text-xl' : 'text-sm'}`}>
+                {takeaways.map(t => <li key={t}>{t}</li>)}
+              </ul>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-4">
             {controls}
             {!present && (
               <CardActions
-                onCopyLink={() => navigator.clipboard.writeText(cardLink(id))}
+                onCopyLink={() => copyCardLink(id)}
                 onSavePng={missing ? undefined : () => savePng(chartRef.current, `oss-pay-${id}`)}
                 onShowTable={missing ? undefined : () => setTableOpen(true)}
               />
@@ -85,8 +88,7 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
         </div>
       </CardHeader>
       <CardContent className={`relative flex flex-col ${present ? 'min-h-0 flex-1 gap-2 pt-3' : 'gap-3 pt-4'}`}>
-        <ChartLegend buckets={legendBuckets} hidden={hidden} items={spec.key} help={spec.help} present={present} onToggle={toggleBucket} />
-        {spec.guide && !(present && spec.guide === 'tick') && <RangeGuide present={present} mark={spec.guide} />}
+        <ChartLegend buckets={legendBuckets} hidden={hidden} items={spec.key} present={present} onToggle={toggleBucket} />
         <div className={present ? 'relative min-h-0 flex-1' : ''}>
           <div className={present ? 'absolute inset-0' : ''}>
             <ChartBody spec={spec} chartRef={chartRef} height={chartHeight} present={present} onClickName={onClickName} />

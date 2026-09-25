@@ -1,11 +1,11 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { BUCKET_COLORS, BUCKET_LABELS } from '@/lib/theme';
-import { BUCKETS, TOGGLES, type Bucket, type FilterState, type Snapshot, type ToggleSlug } from '@/lib/types';
+import { BUCKETS, OSS_GROUPS, type Bucket, type FilterState, type OssGroup, type Snapshot } from '@/lib/types';
+import { GROUP_LABELS, GROUP_NOTES } from '@/lib/groups';
 import { DEFAULT_STATE, toggleBucket } from '@/lib/urlState';
 import { salaries } from '@/lib/companies';
-import { formatPct } from '@/lib/format';
-import { share } from '@/lib/pools';
 
 interface FiltersSheetProps {
   open: boolean;
@@ -38,35 +38,45 @@ function Pills<T extends string>({ value, options, onChange }: PillsProps<T>) {
   );
 }
 
-interface ChipProps { label: string; color: string; active: boolean; onClick: () => void }
+interface ChipProps { label: string; color: string; active: boolean; onClick: () => void; tip?: React.ReactNode }
 
-function Chip({ label, color, active, onClick }: ChipProps) {
+function Chip({ label, color, active, onClick, tip }: ChipProps) {
+  const props = {
+    type: 'button' as const,
+    'aria-pressed': active,
+    onClick,
+    style: active ? { backgroundColor: color, borderColor: color } : { color, borderColor: color },
+    className: `h-7 rounded-full border px-3 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 ${active ? 'text-white' : 'bg-white opacity-70 hover:opacity-100'}`,
+  };
+  if (!tip) return <button {...props}>{label}</button>;
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      style={active ? { backgroundColor: color, borderColor: color } : { color, borderColor: color }}
-      className={`h-7 rounded-full border px-3 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 ${active ? 'text-white' : 'bg-white opacity-70 hover:opacity-100'}`}
-    >
-      {label}
-    </button>
+    <Tooltip>
+      <TooltipTrigger render={<button {...props} />}>{label}</TooltipTrigger>
+      <TooltipContent className="flex-col items-start gap-1 text-left">{tip}</TooltipContent>
+    </Tooltip>
   );
 }
 
-function toggleShare(snapshot: Snapshot): string {
-  const oss = snapshot.companies.filter(c => c.bucket === 'oss');
-  const part = oss.filter(c => TOGGLES.includes(c.slug as ToggleSlug)).reduce((s, c) => s + salaries(c), 0);
-  return formatPct(share(part, oss.reduce((s, c) => s + salaries(c), 0)));
+function groupCompanies(snapshot: Snapshot, group: OssGroup) {
+  return snapshot.companies.filter(c => c.group === group);
 }
 
-function companyName(snapshot: Snapshot, slug: ToggleSlug): string {
-  return snapshot.companies.find(c => c.slug === slug)?.name ?? slug;
+function GroupTip({ snapshot, group }: { snapshot: Snapshot; group: OssGroup }) {
+  return (
+    <>
+      <span className="font-semibold">{GROUP_NOTES[group]}</span>
+      <span className="opacity-80">{groupCompanies(snapshot, group).map(c => `${c.name} ${salaries(c)}`).join(' · ')}</span>
+    </>
+  );
+}
+
+function groupLabel(snapshot: Snapshot, group: OssGroup): string {
+  return `${GROUP_LABELS[group]} (${groupCompanies(snapshot, group).reduce((s, c) => s + salaries(c), 0)})`;
 }
 
 export function FiltersSheet({ open, onOpenChange, snapshot, state, ossN, onChange }: FiltersSheetProps) {
   const bucketLabel = (b: Bucket) => (b === 'oss' && ossN !== null ? `OSS (${ossN})` : BUCKET_LABELS[b]);
-  const reset = () => onChange({ metric: DEFAULT_STATE.metric, cut: DEFAULT_STATE.cut, buckets: [...BUCKETS], toggles: { ...DEFAULT_STATE.toggles }, sort: DEFAULT_STATE.sort });
+  const reset = () => onChange({ metric: DEFAULT_STATE.metric, cut: DEFAULT_STATE.cut, buckets: [...BUCKETS], groups: { ...DEFAULT_STATE.groups }, sort: DEFAULT_STATE.sort });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-0 right-0 left-auto flex h-full max-w-sm translate-x-0 translate-y-0 flex-col gap-6 [&>section]:gap-1.5 overflow-y-auto rounded-none rounded-l-xl p-6 data-open:slide-in-from-right data-closed:slide-out-to-right data-open:zoom-in-100 data-closed:zoom-out-100 motion-reduce:data-open:animate-none motion-reduce:data-closed:animate-none">
@@ -90,11 +100,11 @@ export function FiltersSheet({ open, onOpenChange, snapshot, state, ossN, onChan
             ))}
           </div>
         </Group>
-        <Group label="In the OSS pool" help={`Turn a company off and every OSS number recomputes from the pre-computed pools. These four are ${toggleShare(snapshot)} of OSS salaries.`}>
+        <Group label="In the OSS pool" help="OSS companies grouped by the license of the product they sell. Turn a group off and every OSS number switches to the pool for the groups left on.">
           <div className="flex flex-wrap gap-2">
-            {TOGGLES.map(slug => (
-              <Chip key={slug} label={companyName(snapshot, slug)} color={BUCKET_COLORS.oss} active={state.toggles[slug]}
-                onClick={() => onChange({ toggles: { ...state.toggles, [slug]: !state.toggles[slug] } })} />
+            {OSS_GROUPS.map(g => (
+              <Chip key={g} label={groupLabel(snapshot, g)} tip={<GroupTip snapshot={snapshot} group={g} />} color={BUCKET_COLORS.oss} active={state.groups[g]}
+                onClick={() => onChange({ groups: { ...state.groups, [g]: !state.groups[g] } })} />
             ))}
           </div>
         </Group>

@@ -1,14 +1,17 @@
-import type { Bucket, FilterState, Pool, Snapshot } from './types';
+import { GROUP_PARAM } from './groups';
+import { OSS_GROUPS, type Bucket, type FilterState, type OssGroup, type Pool, type Snapshot } from './types';
 
-export function ossPoolKey(state: FilterState): string {
-  const t = state.toggles;
-  const bit = (on: boolean) => (on ? '1' : '0');
-  return `oss:rh${bit(t['red-hat'])}-cf${bit(t.confluent)}-db${bit(t.databricks)}-am${bit(t.automattic)}`;
+export function ossPoolKey(groups: Record<OssGroup, boolean>): string {
+  return `oss:${OSS_GROUPS.map(g => `${GROUP_PARAM[g]}${groups[g] ? '1' : '0'}`).join('-')}`;
+}
+
+export function allGroupsOff(state: FilterState): boolean {
+  return OSS_GROUPS.every(g => !state.groups[g]);
 }
 
 /** The only place that maps filter state to a pre-computed pool. Nothing else computes a median. */
 export function selectPool(snapshot: Snapshot, state: FilterState, bucket: Bucket): Pool | null {
-  const key = bucket === 'oss' ? ossPoolKey(state) : bucket;
+  const key = bucket === 'oss' ? ossPoolKey(state.groups) : bucket;
   return snapshot.pools[key] ?? null;
 }
 

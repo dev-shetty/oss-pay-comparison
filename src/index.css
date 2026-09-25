@@ -95,3 +95,12 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-bar { transition: none; animation: none; }
 }
+
+::view-transition-group(hero-title) { animation-duration: 600ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+::view-transition-image-pair(hero-title) { isolation: auto; }
+::view-transition-old(hero-title), ::view-transition-new(hero-title) { width: auto; height: 100%; mix-blend-mode: normal; animation: none; }
+::view-transition-old(hero-title) { opacity: 0; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 300ms; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}
