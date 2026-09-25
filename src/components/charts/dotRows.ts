@@ -1,6 +1,6 @@
 import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams, CustomSeriesRenderItemReturn, EChartsOption } from 'echarts';
 import { toDisplay } from '@/lib/format';
-import { COLORS, FONT_FAMILY, SMALL_N, px } from '@/lib/theme';
+import { COLORS, FONT_FAMILY, SMALL_N, lighten, px } from '@/lib/theme';
 import type { Currency } from '@/lib/types';
 import { baseOption, categoryAxis, labelSize, moneyAxis, nColor, nOpacity, niceMax, type ChartContext, type CustomElement } from './shared';
 
@@ -26,6 +26,12 @@ export interface DotRow {
 
 interface Placed { dot: Dot; x: number; dy: number; align: 'left' | 'right' | 'center' }
 
+/** Lighter than full hue so a small sample reads as tentative, darker than the dot tint so the text stays legible. */
+const RATIO_TINT = 0.35;
+
+/** `sides` flanks the pair; `above` puts each value over its own dot so every row reads the same way. */
+export type LabelPlacement = 'sides' | 'above';
+
 /**
  * Labels sit on the outer sides of the pair, measured from the outer edge of either dot so a big
  * hollow dot never runs into a small filled one. If the low label cannot fit left of the pair, it
@@ -45,6 +51,14 @@ function place(row: DotRow, x: (usd: number) => number, left: number, scale: num
   return [loPlaced, { dot: hi, x: rightEdge, dy: 0, align: 'left' }];
 }
 
+function placeAbove(row: DotRow, x: (usd: number) => number, left: number, scale: number): Placed[] {
+  const lift = Math.max(row.a.size, row.b.size) / 2 + labelSize(scale) / 2 + px(3, scale);
+  return [row.a, row.b].map(dot => {
+    const half = (dot.label.length * labelSize(scale) * 0.55) / 2;
+    return { dot, x: Math.max(x(dot.value), left + half), dy: -lift, align: 'center' as const };
+  });
+}
+
 function text(x: number, y: number, value: string, fill: string, size: number, weight: number, align: 'left' | 'right' | 'center', opacity = 1): CustomElement {
   return { type: 'text', silent: true, z2: 6, style: { x, y, text: value, fill, fontSize: size, fontWeight: weight, fontFamily: FONT_FAMILY, align: align, verticalAlign: 'middle', opacity } };
 }
@@ -56,7 +70,7 @@ function circle(cx: number, cy: number, dot: Dot, color: string, scale: number, 
   return { type: 'circle', shape: { cx, cy, r: dot.size / 2 }, style, z2: dot.hollow ? 4 : 5 };
 }
 
-function renderRow(rows: DotRow[], cur: Currency, scale: number) {
+function renderRow(rows: DotRow[], cur: Currency, scale: number, placement: LabelPlacement) {
   return (params: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI): CustomSeriesRenderItemReturn => {
     const idx = params.dataIndex;
     const row = rows[idx];
@@ -67,7 +81,7 @@ function renderRow(rows: DotRow[], cur: Currency, scale: number) {
     const color = nColor(row.n, row.color);
     const opacity = nOpacity(row.n);
     const size = labelSize(scale);
-    const placed = place(row, x, left, scale);
+    const placed = placement === 'above' ? placeAbove(row, x, left, scale) : place(row, x, left, scale);
     const children: CustomElement[] = [
       { type: 'line', silent: true, shape: { x1: x(row.a.value), y1: y0, x2: x(row.b.value), y2: y0 }, style: { stroke: color, lineWidth: px(2, scale), opacity } },
       circle(x(row.a.value), y0, row.a, color, scale, opacity),
@@ -75,10 +89,13 @@ function renderRow(rows: DotRow[], cur: Currency, scale: number) {
       ...placed.map(p => text(p.x, y0 + p.dy, p.dot.label, COLORS.sub, size, 700, p.align, opacity)),
     ];
     if (row.midLabel) {
-      const mid = (x(row.a.value) + x(row.b.value)) / 2;
-      const lift = Math.max(row.a.size, row.b.size) / 2 + px(9, scale);
-      const aboveTaken = placed.some(p => p.dy < 0);
-      children.push(text(mid, aboveTaken ? y0 + lift : y0 - lift, row.midLabel, row.n < SMALL_N ? COLORS.sub : row.color, size, 800, 'center', opacity));
+      const columnX = api.getWidth() - px(16, scale);
+      const ratioColor = row.n < SMALL_N ? lighten(row.color, RATIO_TINT) : row.color;
+      children.push(text(columnX, y0, row.midLabel, ratioColor, size + px(2, scale), 800, 'right', opacity));
+      if (idx === 0 && params.coordSys) {
+        const top = (params.coordSys as unknown as { y: number }).y;
+        children.push(text(columnX, top - px(10, scale), '% of US pay', COLORS.mute, size - px(1, scale), 700, 'right'));
+      }
     }
     if (row.subText) {
       children.push(text(x(Math.min(row.a.value, row.b.value)) - Math.min(row.a.size, row.b.size) / 2, y0 + Math.max(h * 0.3, Math.max(row.a.size, row.b.size) / 2 + px(10, scale)), row.subText, COLORS.mute, size - 1, 600, 'left'));
@@ -87,21 +104,22 @@ function renderRow(rows: DotRow[], cur: Currency, scale: number) {
   };
 }
 
-export function dotRowsOption(ctx: ChartContext, rows: DotRow[]): EChartsOption {
+export function dotRowsOption(ctx: ChartContext, rows: DotRow[], placement: LabelPlacement = 'sides'): EChartsOption {
   const cur = ctx.state.cur;
   const scale = ctx.scale;
   const base = baseOption(scale);
   const xMax = Math.max(...rows.flatMap(r => [r.a.value, r.b.value]));
+  const ratioColumn = rows.some(r => r.midLabel);
   return {
     ...base,
-    grid: { ...base.grid, right: px(110, scale), top: px(28, scale), bottom: px(28, scale) },
+    grid: { ...base.grid, right: px(ratioColumn ? 150 : 110, scale), top: px(placement === 'above' ? 44 : 28, scale), bottom: px(28, scale) },
     tooltip: { ...base.tooltip, formatter: (p: unknown) => (p as { data: { row: DotRow } }).data.row.tooltip },
     xAxis: moneyAxis(cur, scale, { min: 0, max: niceMax(toDisplay(xMax * 1.08, cur)) }),
     yAxis: categoryAxis(rows.map(r => r.name), scale, { inverse: true }),
     series: [{
       type: 'custom',
       name: 'dots',
-      renderItem: renderRow(rows, cur, scale),
+      renderItem: renderRow(rows, cur, scale, placement),
       data: rows.map((row, i) => ({ value: [toDisplay(row.a.value, cur), i], row })),
     }],
   };

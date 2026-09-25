@@ -21,11 +21,11 @@ export function MethodList({ rows }: { rows: MethodRow[] }) {
 
 function MethodTiles({ rows }: { rows: MethodRow[] }) {
   return (
-    <dl className="mx-auto grid w-full max-w-[1000px] grid-cols-2 gap-5">
+    <dl className="mx-auto grid w-full max-w-[1120px] grid-cols-2 gap-6">
       {rows.map(row => (
-        <div key={row.label} className="flex flex-col gap-2 rounded-xl bg-muted px-7 py-6">
-          <dt className="text-xl font-bold text-mute">{row.label}</dt>
-          <dd className="text-[2rem] leading-tight font-extrabold text-balance text-ink">{row.value}</dd>
+        <div key={row.label} className="flex min-h-[11rem] flex-col justify-between gap-6 rounded-2xl border border-border bg-muted/40 px-9 py-8">
+          <dt className="text-sm font-extrabold tracking-[0.14em] text-primary uppercase">{row.label}</dt>
+          <dd className="text-[2.25rem] leading-[1.15] font-extrabold tracking-[-0.02em] text-balance text-ink">{row.value}</dd>
         </div>
       ))}
     </dl>

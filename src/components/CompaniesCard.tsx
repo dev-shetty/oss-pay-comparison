@@ -35,8 +35,8 @@ interface GroupChipsProps { label: string; companies: Company[]; color: string; 
 function GroupChips({ label, companies, color, state, present }: GroupChipsProps) {
   if (companies.length === 0) return null;
   return (
-    <li className="flex flex-wrap items-center gap-1.5 pr-2">
-      <span className={`font-semibold text-mute ${present ? 'text-base' : 'text-[11px]'}`}>{label}</span>
+    <li className="contents">
+      <span className={`self-center font-bold whitespace-nowrap text-mute ${present ? 'text-sm tracking-[0.08em] uppercase' : 'text-[11px]'}`}>{label}</span>
       <ul className="flex flex-wrap gap-1.5">
         {companies.map(c => <Chip key={c.slug} company={c} color={color} excluded={isExcluded(c, state)} present={present} />)}
       </ul>
@@ -51,15 +51,15 @@ function BucketLine({ bucket, companies, state, present }: { bucket: Bucket; com
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 sm:flex-nowrap ${present ? 'py-6 text-xl' : 'py-4 text-sm'}`}>
       <span className={`flex shrink-0 items-center gap-2 font-extrabold text-ink ${present ? 'w-56' : 'w-32'}`}>
-        <span className="inline-block size-2.5 rounded-sm" style={{ background: color }} />
+        <span className={`inline-block rounded-sm ${present ? 'size-3' : 'size-2.5'}`} style={{ background: color }} />
         {BUCKET_LABELS[bucket]}
       </span>
-      <ul className="order-last flex min-w-0 basis-full flex-wrap gap-1.5 sm:order-none sm:basis-auto sm:flex-1">
+      <ul className={`order-last min-w-0 basis-full sm:order-none sm:basis-auto sm:flex-1 ${bucket === 'oss' ? 'grid grid-cols-[auto_1fr] gap-x-3 gap-y-2' : 'flex flex-wrap gap-1.5'}`}>
         {bucket === 'oss'
           ? OSS_GROUPS.map(g => <GroupChips key={g} label={GROUP_LABELS[g]} companies={rows.filter(c => c.group === g)} color={color} state={state} present={present} />)
           : rows.map(c => <Chip key={c.slug} company={c} color={color} excluded={isExcluded(c, state)} present={present} />)}
       </ul>
-      <span className="ml-auto shrink-0 font-bold text-ink tabular-nums">{formatSalaries(total)}</span>
+      <span className={`ml-auto shrink-0 font-bold tabular-nums ${present ? 'text-sub' : 'text-ink'}`}>{formatSalaries(total)}</span>
     </div>
   );
 }
@@ -91,7 +91,7 @@ function FullList({ snapshot, state }: { snapshot: Snapshot; state: FilterState 
 export function CompaniesCard({ id, title, present, snapshot, state }: CompaniesCardProps) {
   return (
     <TextCard id={id} title={title} present={present}>
-      <div className={present ? 'px-10' : 'px-2 sm:px-6'}>
+      <div className={present ? '' : 'px-2 sm:px-6'}>
       <div className={`flex flex-wrap items-center gap-x-3.5 font-semibold text-sub ${present ? 'text-base' : 'text-xs sm:text-[13px]'}`}>
         <ChartKey items={LIGHT_CHIP_KEY} present={present} />
       </div>

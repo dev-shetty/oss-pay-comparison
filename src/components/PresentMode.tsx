@@ -65,17 +65,26 @@ export function PresentMode({ state, onChange, renderCard }: PresentModeProps) {
 
   return (
     <div className="present-root fixed inset-0 z-40 flex flex-col justify-center overflow-hidden bg-background">
-      {!fullscreen && <div className="mx-auto flex h-16 w-[min(90vw,1440px)] shrink-0 items-center justify-between gap-4">
+      <div aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-primary/10">
+        <div className="present-progress h-full rounded-r-full bg-primary" style={{ width: `${((index + 1) / cards.length) * 100}%` }} />
+      </div>
+      {!fullscreen && <div className="mx-auto flex h-16 w-[min(90vw,1440px)] shrink-0 items-center justify-between gap-4 px-1">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="min-w-[3.25rem] text-base font-bold text-mute tabular-nums">{index + 1} / {cards.length}</span>
-          <span className="h-5 w-px bg-border" aria-hidden />
           <Brand />
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" aria-label="Previous card" onClick={() => step(-1)} disabled={index === 0}><ChevronLeft /></Button>
-          <Button variant="ghost" size="icon" aria-label="Next card" onClick={() => step(1)} disabled={index === cards.length - 1}><ChevronRight /></Button>
-          <Button variant="ghost" size="icon" aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen (F)'} onClick={toggleFullscreen}>{fullscreen ? <Minimize /> : <Maximize />}</Button>
-          <Button variant="ghost" size="icon" aria-label="Exit present mode" onClick={exit}><X /></Button>
+        <div className="flex items-center gap-3">
+          <span className="text-[15px] font-bold tabular-nums text-mute">
+            <span className="text-ink">{String(index + 1).padStart(2, '0')}</span>
+            <span className="mx-1.5">/</span>
+            {String(cards.length).padStart(2, '0')}
+          </span>
+          <span className="h-5 w-px bg-border" aria-hidden />
+          <div className="flex items-center gap-0.5 text-sub">
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Previous card" onClick={() => step(-1)} disabled={index === 0}><ChevronLeft /></Button>
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Next card" onClick={() => step(1)} disabled={index === cards.length - 1}><ChevronRight /></Button>
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen (F)'} onClick={toggleFullscreen}>{fullscreen ? <Minimize /> : <Maximize />}</Button>
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Exit present mode" onClick={exit}><X /></Button>
+          </div>
         </div>
       </div>}
       <div className={`mx-auto w-[min(90vw,1440px)] shrink-0 overflow-hidden ${slideHeight(card.id, fullscreen)}`}>

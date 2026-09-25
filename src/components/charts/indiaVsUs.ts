@@ -42,7 +42,8 @@ function toRow(ctx: ChartContext, item: Item): DotRow {
 const KEY: KeyItem[] = [
   { glyph: 'filledDot', label: 'India' },
   { glyph: 'hollowDot', label: 'US' },
-  { glyph: 'value', text: '26%', label: 'India ÷ US' },
+  { glyph: 'value', text: '26%', label: 'India pay as % of US pay' },
+  { glyph: 'smallDot', label: 'under 20 India salaries' },
 ];
 
 export function buildIndiaVsUs(ctx: ChartContext): ChartSpec {
@@ -51,7 +52,7 @@ export function buildIndiaVsUs(ctx: ChartContext): ChartSpec {
   if (rows.length === 0) return emptySpec(context, 'No company with a US reference in the selected buckets.');
   const cur = ctx.state.cur;
   return {
-    option: dotRowsOption(ctx, rows.map(r => toRow(ctx, r))),
+    option: dotRowsOption(ctx, rows.map(r => toRow(ctx, r)), 'above'),
     context,
     key: KEY,
     legend: ctx.visible.filter(b => rows.some(r => r.company.bucket === b)),

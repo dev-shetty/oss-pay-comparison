@@ -71,7 +71,7 @@ export const CARDS: CardDef[] = [
   },
   { id: 'disclaimer', kind: 'disclaimer', poll: 'Before the numbers' },
   { id: 'closing', kind: 'closing', poll: 'Thank you' },
-  { id: 'policies', kind: 'policies', poll: 'Who publishes their pay formula?', questions: ['Should OSS companies be open about pay too?'] },
+  { id: 'policies', kind: 'policies', poll: 'Who publishes their pay formula?', questions: ['Should OSS companies be open about pay, and how can Levels.fyi help?'] },
 ];
 
 /** Setup cards live in the About panel in Explore mode; Present mode keeps them as slides. */

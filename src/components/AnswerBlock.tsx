@@ -25,7 +25,7 @@ const SIZES = {
     caption: 'text-[13px] sm:text-sm',
   },
   present: {
-    root: 'flex h-full flex-col justify-center gap-10 rounded-xl bg-card px-16 shadow-card',
+    root: 'flex h-full flex-col justify-center gap-12 rounded-[20px] bg-card px-20 shadow-slide ring-1 ring-black/[0.04]',
     headline: 'text-[4.5rem]',
     list: 'gap-5',
     grid: 'sm:grid-cols-[14rem_1fr_11rem]',
@@ -33,7 +33,7 @@ const SIZES = {
     bar: 'h-12',
     value: 'text-4xl',
     chip: 'text-lg px-4 py-1',
-    caption: 'text-xl',
+    caption: 'text-lg border-t border-border pt-6',
   },
 } as const;
 

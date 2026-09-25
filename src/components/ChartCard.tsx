@@ -8,6 +8,7 @@ import type { ChartContext, ChartSpec } from './charts/shared';
 import { copyCardLink } from '@/lib/cardLink';
 import type { Bucket } from '@/lib/types';
 import { WATERMARK } from '@/lib/theme';
+import { SLIDE } from '@/lib/slide';
 
 interface ChartCardProps {
   id: string;
@@ -60,17 +61,17 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
   const toggleBucket = (b: Bucket) => setHidden(prev => (prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]));
   const missing = spec.option === null;
   const chartHeight = present ? '100%' : spec.height ?? height;
-  const titleClass = present ? 'text-[2.4rem] leading-tight font-extrabold' : 'text-xl leading-tight font-extrabold';
-  const contextClass = present ? 'text-lg' : 'text-xs';
+  const titleClass = present ? SLIDE.title : 'text-xl leading-tight font-extrabold';
+  const contextClass = present ? SLIDE.eyebrow : 'mb-1 text-xs font-bold text-mute';
   return (
-    <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${present ? 'h-full' : ''} ${missing ? 'opacity-70' : ''}`}>
-      <CardHeader className={`gap-1 border-b border-border pb-3 ${present ? 'px-8' : ''}`}>
+    <Card id={id} className={`scroll-mt-40 shadow-card ring-0 ${present ? SLIDE.card : ''} ${missing ? 'opacity-70' : ''}`}>
+      <CardHeader className={present ? SLIDE.header : 'gap-1 border-b border-border pb-3'}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <p className={`${contextClass} mb-1 font-bold text-mute`}>{spec.context}</p>
+            <p className={contextClass}>{spec.context}</p>
             <h2 className={`${titleClass} text-ink text-balance`}>{title}</h2>
             {takeaways && (
-              <ul className={`mt-2 flex flex-col gap-1 font-semibold text-sub ${present ? 'text-xl' : 'text-sm'}`}>
+              <ul className={`flex flex-col ${present ? `mt-3 max-w-[70ch] gap-1 ${SLIDE.takeaway}` : 'mt-2 gap-1 text-sm font-semibold text-sub'}`}>
                 {takeaways.map(t => <li key={t}>{t}</li>)}
               </ul>
             )}
@@ -87,14 +88,14 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
           </div>
         </div>
       </CardHeader>
-      <CardContent className={`relative flex flex-col ${present ? 'min-h-0 flex-1 gap-2 pt-3' : 'gap-3 pt-4'}`}>
+      <CardContent className={`relative flex flex-col ${present ? `min-h-0 flex-1 gap-4 pt-1 pb-8 ${SLIDE.content}` : 'gap-3 pt-4'}`}>
         <ChartLegend buckets={legendBuckets} hidden={hidden} items={spec.key} present={present} onToggle={toggleBucket} />
         <div className={present ? 'relative min-h-0 flex-1' : ''}>
           <div className={present ? 'absolute inset-0' : ''}>
             <ChartBody spec={spec} chartRef={chartRef} height={chartHeight} present={present} onClickName={onClickName} />
           </div>
         </div>
-        <p className={`${present ? 'text-base' : 'text-xs'} shrink-0 text-mute pr-28`}>{spec.source}</p>
+        <p className={`shrink-0 text-mute ${present ? 'border-t border-border pt-4 text-[15px] leading-snug' : 'pr-28 text-xs'}`}>{spec.source}</p>
       </CardContent>
       {!missing && (
         <DataTableDialog open={tableOpen} onOpenChange={setTableOpen} title={title} source={spec.source} table={spec.table} />

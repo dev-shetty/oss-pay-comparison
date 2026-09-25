@@ -1,13 +1,25 @@
 import { DISCLAIMER } from '@/lib/cards';
 
-export function DisclaimerList({ present }: { present: boolean }) {
-  const text = present ? 'text-[2.5rem] leading-tight gap-7 font-bold text-ink' : 'text-base leading-snug gap-2 font-semibold text-sub';
-  const dot = present ? 'size-3 mt-[19px]' : 'size-1.5 mt-2';
+function DisclaimerSlide() {
   return (
-    <ul className={`flex list-none flex-col ${text}`}>
+    <ol className="mx-auto flex w-full max-w-[1000px] list-none flex-col divide-y divide-border">
+      {DISCLAIMER.map((line, i) => (
+        <li key={line} className="flex items-baseline gap-8 py-7">
+          <span aria-hidden className="w-10 shrink-0 text-2xl font-extrabold text-primary tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+          <span className="text-[2.25rem] leading-tight font-bold tracking-[-0.015em] text-ink">{line}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function DisclaimerList({ present }: { present: boolean }) {
+  if (present) return <DisclaimerSlide />;
+  return (
+    <ul className="flex list-none flex-col gap-2 text-base leading-snug font-semibold text-sub">
       {DISCLAIMER.map(line => (
         <li key={line} className="flex items-start gap-[0.6em]">
-          <span aria-hidden className={`${dot} shrink-0 rounded-full bg-mute`} />
+          <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-mute" />
           {line}
         </li>
       ))}
