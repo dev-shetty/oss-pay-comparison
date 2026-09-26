@@ -51,12 +51,18 @@ function place(row: DotRow, x: (usd: number) => number, left: number, scale: num
   return [loPlaced, { dot: hi, x: rightEdge, dy: 0, align: 'left' }];
 }
 
+/** When the two values would touch, the higher one drops below the line so neither is hidden. */
 function placeAbove(row: DotRow, x: (usd: number) => number, left: number, scale: number): Placed[] {
   const lift = Math.max(row.a.size, row.b.size) / 2 + labelSize(scale) / 2 + px(3, scale);
-  return [row.a, row.b].map(dot => {
-    const half = (dot.label.length * labelSize(scale) * 0.55) / 2;
-    return { dot, x: Math.max(x(dot.value), left + half), dy: -lift, align: 'center' as const };
-  });
+  const halfWidth = (dot: Dot) => (dot.label.length * labelSize(scale) * 0.55) / 2;
+  const [lo, hi] = row.a.value <= row.b.value ? [row.a, row.b] : [row.b, row.a];
+  const loX = Math.max(x(lo.value), left + halfWidth(lo));
+  const hiX = Math.max(x(hi.value), left + halfWidth(hi));
+  const clash = loX + halfWidth(lo) + px(8, scale) > hiX - halfWidth(hi);
+  return [
+    { dot: lo, x: loX, dy: -lift, align: 'center' },
+    { dot: hi, x: hiX, dy: clash ? lift : -lift, align: 'center' },
+  ];
 }
 
 function text(x: number, y: number, value: string, fill: string, size: number, weight: number, align: 'left' | 'right' | 'center', opacity = 1): CustomElement {

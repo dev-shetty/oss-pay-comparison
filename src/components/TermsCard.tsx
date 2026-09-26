@@ -104,7 +104,11 @@ export function TermsCard({ id, title, present }: Omit<TextCardProps, 'children'
   return (
     <TextCard id={id} title={title} present={present}>
       <div className={`mx-auto flex w-full flex-col ${present ? 'max-w-[1240px] gap-10' : 'gap-6'}`}>
-        <ExampleSvg />
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="min-w-[820px]">
+            <ExampleSvg />
+          </div>
+        </div>
         <dl className={`grid sm:grid-cols-2 lg:grid-cols-4 ${present ? 'gap-4 text-lg' : 'gap-3 text-sm'}`}>
           {OTHER_TERMS.map(t => (
             <div key={t.term} className={present ? 'rounded-2xl border border-border bg-muted/40 px-6 py-5' : 'rounded-lg bg-muted/60 px-4 py-3'}>

@@ -15,6 +15,8 @@ export interface ChartContext {
   visible: Bucket[];
   scale: number;
   options: CardOptions;
+  /** Phone width: charts drop or rearrange labels that cannot fit. Never true in Present mode. */
+  narrow: boolean;
 }
 
 export interface ChartSpec {
@@ -90,7 +92,7 @@ export function valueAxis(scale: number, formatter: (v: number) => string, extra
   return {
     type: 'value' as const,
     splitLine: { lineStyle: { color: COLORS.grid, type: 'dashed' as const } },
-    axisLabel: { color: COLORS.mute, fontSize: labelSize(scale), formatter },
+    axisLabel: { color: COLORS.mute, fontSize: labelSize(scale), formatter, hideOverlap: true },
     ...extra,
   };
 }

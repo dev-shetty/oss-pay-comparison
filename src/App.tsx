@@ -23,6 +23,7 @@ import { selectPools } from '@/lib/pools';
 import { type FilterState, type Snapshot } from '@/lib/types';
 import { activeFilterCount, useUrlState } from '@/lib/urlState';
 import { formatPulledAt } from '@/lib/format';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 const snapshot = snapshotJson as Snapshot;
 const PRESENT_SCALE = 1.4;
@@ -43,9 +44,11 @@ export default function App() {
   const [options, updateOptions] = useCardOptions();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const pools = useMemo(() => selectPools(snapshot, state), [state]);
+  const phone = useMediaQuery('(max-width: 639px)');
+  const narrow = phone && !state.present;
   const ctx: ChartContext = useMemo(
-    () => ({ snapshot, state, pools, visible: state.buckets, scale: state.present ? PRESENT_SCALE : 1, options }),
-    [state, pools, options],
+    () => ({ snapshot, state, pools, visible: state.buckets, scale: state.present ? PRESENT_SCALE : 1, options, narrow }),
+    [state, pools, options, narrow],
   );
 
   useEffect(() => {

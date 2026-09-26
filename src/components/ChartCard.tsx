@@ -32,6 +32,19 @@ function savePng(handle: ChartHandle | null, filename: string) {
   a.click();
 }
 
+/** Phone-width value axes keep three ticks; the default five run into each other. A fixed max needs an explicit step, since ECharts rounds splitNumber back to its nice interval. */
+function withFewerTicks(spec: ChartSpec): ChartSpec {
+  if (!spec.option) return spec;
+  const thin = (axis: unknown) => {
+    const a = axis as { type?: string; max?: unknown };
+    if (a.type !== 'value') return axis;
+    return typeof a.max === 'number' ? { ...a, interval: a.max / 2 } : { ...a, splitNumber: 3 };
+  };
+  const { xAxis } = spec.option;
+  if (!xAxis) return spec;
+  return { ...spec, option: { ...spec.option, xAxis: Array.isArray(xAxis) ? xAxis.map(thin) : thin(xAxis) } as ChartSpec['option'] };
+}
+
 interface ChartBodyProps {
   spec: ChartSpec;
   chartRef: React.RefObject<ChartHandle>;
@@ -56,7 +69,10 @@ export function ChartCard({ id, title, ctx, build, present, height, controls, on
   const chartRef = useRef<ChartHandle>(null);
   const [tableOpen, setTableOpen] = useState(false);
   const [hidden, setHidden] = useState<Bucket[]>([]);
-  const spec = useMemo(() => build({ ...ctx, visible: ctx.visible.filter(b => !hidden.includes(b)) }), [build, ctx, hidden]);
+  const spec = useMemo(() => {
+    const built = build({ ...ctx, visible: ctx.visible.filter(b => !hidden.includes(b)) });
+    return ctx.narrow ? withFewerTicks(built) : built;
+  }, [build, ctx, hidden]);
   const legendBuckets = ctx.visible.filter(b => spec.legend?.includes(b) || hidden.includes(b));
   const toggleBucket = (b: Bucket) => setHidden(prev => (prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]));
   const missing = spec.option === null;

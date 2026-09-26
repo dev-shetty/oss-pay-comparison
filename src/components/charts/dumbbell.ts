@@ -60,7 +60,7 @@ function densityData(rows: DumbbellRow[], cur: Currency) {
   });
 }
 
-export function dumbbellOption(rows: DumbbellRow[], cur: Currency, scale: number, barWidth = 18): EChartsOption {
+export function dumbbellOption(rows: DumbbellRow[], cur: Currency, scale: number, barWidth = 18, narrow = false): EChartsOption {
   const base = baseOption(scale);
   const names = rows.map(r => r.name);
   const bw = px(barWidth, scale);
@@ -73,7 +73,7 @@ export function dumbbellOption(rows: DumbbellRow[], cur: Currency, scale: number
   }));
   return {
     ...base,
-    grid: { ...base.grid, right: px(200, scale) },
+    grid: { ...base.grid, right: px(narrow ? 132 : 200, scale), left: px(narrow ? 4 : 16, scale) },
     tooltip: {
       ...base.tooltip,
       formatter: (params: unknown) => dumbbellTooltip((params as { data: RowItem }).data.row, cur),

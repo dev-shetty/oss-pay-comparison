@@ -53,6 +53,7 @@ export function buildIndiaVsUs(ctx: ChartContext): ChartSpec {
   const cur = ctx.state.cur;
   return {
     option: dotRowsOption(ctx, rows.map(r => toRow(ctx, r)), 'above'),
+    height: ctx.narrow ? rows.length * 64 + 70 : undefined,
     context,
     key: KEY,
     legend: ctx.visible.filter(b => rows.some(r => r.company.bucket === b)),

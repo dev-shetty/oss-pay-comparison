@@ -43,35 +43,58 @@ export function DisclaimerCard({ id, title, present }: Omit<TextCardProps, 'chil
   );
 }
 
+function PolicyLinks({ links }: { links: External['links'] }) {
+  return links.map(link => (
+    <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="mr-3 font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary">{link.label}</a>
+  ));
+}
+
+/** Phones get one block per company; four table columns squeeze each policy to a word per line. */
+function PolicyList({ external }: { external: External[] }) {
+  return (
+    <ul className="flex flex-col divide-y divide-border sm:hidden">
+      {external.map(row => (
+        <li key={row.company} className="flex flex-col gap-1.5 py-4 text-sm first:pt-0">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-extrabold text-ink">{row.company}</span>
+            <span className="text-right text-xs font-bold text-sub">{row.floor}</span>
+          </div>
+          <p className="leading-snug text-sub">{row.policy}</p>
+          <div><PolicyLinks links={row.links} /></div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function PoliciesCard({ id, title, present, external }: Omit<TextCardProps, 'children'> & { external: External[] }) {
   const cell = present ? 'text-xl py-5 align-top' : 'text-sm';
   const head = present ? 'h-auto pb-4 text-sm font-extrabold tracking-[0.12em] text-mute uppercase' : 'text-sm';
   return (
     <TextCard id={id} title={title} present={present}>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className={head}>Company</TableHead>
-            <TableHead className={head}>Public policy</TableHead>
-            <TableHead className={head}>Floor / band</TableHead>
-            <TableHead className={head}>Read more</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {external.map(row => (
-            <TableRow key={row.company}>
-              <TableCell className={`${cell} font-extrabold text-ink`}>{row.company}</TableCell>
-              <TableCell className={`${cell} whitespace-normal ${present ? 'pr-10 text-sub' : ''}`}>{row.policy}</TableCell>
-              <TableCell className={`${cell} whitespace-normal ${present ? 'pr-10 font-semibold text-ink' : ''}`}>{row.floor}</TableCell>
-              <TableCell className={`${cell} whitespace-normal`}>
-                {row.links.map(link => (
-                  <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="mr-3 font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary">{link.label}</a>
-                ))}
-              </TableCell>
+      {!present && <PolicyList external={external} />}
+      <div className={present ? '' : 'max-sm:hidden'}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className={head}>Company</TableHead>
+              <TableHead className={head}>Public policy</TableHead>
+              <TableHead className={head}>Floor / band</TableHead>
+              <TableHead className={head}>Read more</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {external.map(row => (
+              <TableRow key={row.company}>
+                <TableCell className={`${cell} font-extrabold text-ink`}>{row.company}</TableCell>
+                <TableCell className={`${cell} whitespace-normal ${present ? 'pr-10 text-sub' : ''}`}>{row.policy}</TableCell>
+                <TableCell className={`${cell} whitespace-normal ${present ? 'pr-10 font-semibold text-ink' : ''}`}>{row.floor}</TableCell>
+                <TableCell className={`${cell} whitespace-normal`}><PolicyLinks links={row.links} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </TextCard>
   );
 }

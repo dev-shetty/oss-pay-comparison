@@ -14,7 +14,7 @@ interface TopNavProps {
 export function TopNav({ state, filterCount, onOpenFilters, onChange }: TopNavProps) {
   return (
     <div className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-[1100px] items-center gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-[1100px] items-center gap-2 px-4 sm:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <Brand />
         </div>
@@ -29,7 +29,7 @@ export function TopNav({ state, filterCount, onOpenFilters, onChange }: TopNavPr
           <ToggleGroupItem value="usd" className="data-pressed:bg-primary data-pressed:text-primary-foreground">USD</ToggleGroupItem>
           <ToggleGroupItem value="inr" className="data-pressed:bg-primary data-pressed:text-primary-foreground">INR</ToggleGroupItem>
         </ToggleGroup>
-        <Button variant="ghost" size="sm" onClick={() => onChange({ present: true, card: 0 })}>
+        <Button variant="ghost" size="sm" className="max-md:hidden" onClick={() => onChange({ present: true, card: 0 })}>
           <Presentation data-icon="inline-start" />
           Present
         </Button>

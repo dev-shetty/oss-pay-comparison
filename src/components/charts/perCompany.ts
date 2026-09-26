@@ -38,9 +38,9 @@ function withFilter(ctx: ChartContext, items: KeyItem[]): KeyItem[] {
 
 function dumbbellSpec(ctx: ChartContext, list: Entry[]): ChartSpec {
   const cur = ctx.state.cur;
-  const rows = list.map((e): DumbbellRow => ({ id: e.company.slug, name: e.company.name, pct: e.company[ctx.state.metric]!, off: e.off, color: BUCKET_COLORS[e.company.bucket], hint: e.hint, badge: e.badge }));
+  const rows = list.map((e): DumbbellRow => ({ id: e.company.slug, name: e.company.name, pct: e.company[ctx.state.metric]!, off: e.off, color: BUCKET_COLORS[e.company.bucket], hint: e.hint, badge: ctx.narrow ? undefined : e.badge }));
   return {
-    option: dumbbellOption(rows, cur, ctx.scale, 12),
+    option: dumbbellOption(rows, cur, ctx.scale, 12, ctx.narrow),
     legend: ctx.visible.filter(b => list.some(e => e.company.bucket === b)),
     context: `${metricName(ctx)} · per company`,
     key: withFilter(ctx, [{ glyph: 'tintBand', label: 'under 20 salaries' }]),

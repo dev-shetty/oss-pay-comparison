@@ -37,7 +37,7 @@ function partSeries(ctx: ChartContext, bucket: Bucket, part: Part, levels: Level
     barGap: '20%',
     itemStyle: { color },
     label: {
-      show: part === 'bonus',
+      show: part === 'bonus' && !ctx.narrow,
       position: 'top' as const,
       distance: px(4, ctx.scale),
       fontSize: labelSize(ctx.scale),
